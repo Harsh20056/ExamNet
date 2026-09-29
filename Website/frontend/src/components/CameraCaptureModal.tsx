@@ -5,10 +5,13 @@ import { Camera, RefreshCw, X, AlertCircle } from 'lucide-react';
 interface Props {
   onClose: () => void;
   onCapture: (faceDescriptor: number[]) => void;
-  studentName: string;
+  examinerName?: string;
+  candidateName?: string;
+  studentName?: string;
 }
 
-export default function CameraCaptureModal({ onClose, onCapture, studentName }: Props) {
+export default function CameraCaptureModal({ onClose, onCapture, examinerName, candidateName, studentName }: Props) {
+  const displayName = examinerName || candidateName || studentName || 'Examiner';
   const videoRef = useRef<HTMLVideoElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
@@ -103,7 +106,14 @@ export default function CameraCaptureModal({ onClose, onCapture, studentName }: 
     <div className="fixed inset-0 z-[300] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col">
         <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
-          <h3 className="font-bold text-lg text-slate-900 dark:text-white">Verify: {studentName}</h3>
+          <div>
+            <h3 className="font-bold text-lg text-slate-900 dark:text-white">
+              Enrol Examiner Reference Face
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Examiner: <span className="font-semibold text-slate-700 dark:text-slate-300">{displayName}</span>
+            </p>
+          </div>
           <button onClick={onClose} className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
             <X size={20} />
           </button>
@@ -145,7 +155,7 @@ export default function CameraCaptureModal({ onClose, onCapture, studentName }: 
             className="flex-1 py-2.5 bg-primary-600 hover:bg-primary-500 disabled:opacity-50 text-white rounded-lg font-medium flex items-center justify-center transition-colors"
           >
             <Camera size={18} className="mr-2" />
-            Capture
+            Enrol Face
           </button>
         </div>
       </div>

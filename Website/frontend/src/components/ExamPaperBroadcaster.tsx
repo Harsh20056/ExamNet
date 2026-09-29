@@ -34,7 +34,7 @@ export default function ExamPaperBroadcaster({ socket, backendUrl, totalExpected
   // Form states
   const [title, setTitle] = useState('Advanced Algorithms Final Exam');
   const [subject, setSubject] = useState('Computer Science');
-  const [instructions, setInstructions] = useState('1. All questions are compulsory.\n2. 3-Hour timer is live upon broadcast.\n3. Do not attempt to exit fullscreen mode.');
+  const [instructions, setInstructions] = useState('1. All questions are compulsory.\n2. 3-Hour timer is live upon broadcast.\n3. Do not attempt to exit secure marking mode.');
   const [rawContent, setRawContent] = useState('');
   const [answerKeyInput, setAnswerKeyInput] = useState('A,B,C,D');
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
@@ -550,7 +550,7 @@ export default function ExamPaperBroadcaster({ socket, backendUrl, totalExpected
                 className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-lg transition-colors flex items-center gap-2"
               >
                 <Radio size={16} className="animate-pulse" />
-                Convert & Broadcast to All Logged-in Students (Start 3-Hour Timer)
+                Convert & Broadcast to All Active Answer Sheets (Start 3-Hour Timer)
               </button>
             </div>
           </motion.div>
@@ -599,7 +599,7 @@ export default function ExamPaperBroadcaster({ socket, backendUrl, totalExpected
               <button onClick={() => setShowDeliveryModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold">✕</button>
             </div>
             <div className="mb-4 text-xs text-slate-500 dark:text-slate-400 flex justify-between items-center">
-              <span>Total Delivered: <strong className="text-slate-900 dark:text-white font-bold">{deliveredCount}</strong> student(s)</span>
+              <span>Total Delivered: <strong className="text-slate-900 dark:text-white font-bold">{deliveredCount}</strong> answer sheet(s)</span>
               <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
                 {presentCount && presentCount > 0 ? Math.round((deliveredCount / presentCount) * 100) : (activePaper ? 100 : 0)}% Success
               </span>
@@ -609,7 +609,7 @@ export default function ExamPaperBroadcaster({ socket, backendUrl, totalExpected
                 <div key={idx} className="p-3 flex justify-between items-center text-xs">
                   <div>
                     <p className="font-bold text-slate-900 dark:text-white">{s.name}</p>
-                    <p className="text-slate-500 font-mono">Roll: {s.roll}</p>
+                    <p className="text-slate-500 font-mono">Sheet ID: {s.roll}</p>
                   </div>
                   <span className="px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-mono rounded text-[11px] font-semibold border border-emerald-200 dark:border-emerald-800">
                     Delivered at {s.time}
@@ -618,7 +618,7 @@ export default function ExamPaperBroadcaster({ socket, backendUrl, totalExpected
               ))}
               {deliveredStudents.length === 0 && (
                 <div className="p-8 text-center text-slate-500 text-xs">
-                  No delivery acknowledgments received yet. Make sure students are logged in and paper is broadcasted.
+                  No delivery acknowledgments received yet. Make sure answer sheets are logged in and paper is broadcasted.
                 </div>
               )}
             </div>

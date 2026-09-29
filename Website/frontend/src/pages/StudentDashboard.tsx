@@ -1,10 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Upload, MapPin, Clock, Bot, UserCheck, FileText, AlertTriangle, Lock, Smartphone, X, LogOut, Radio, Download, CheckCircle2, Bookmark } from 'lucide-react';
+import { Upload, Clock, Bot, UserCheck, FileText, AlertTriangle, Lock, Smartphone, X, LogOut, Radio, Download, CheckCircle2, Bookmark } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
-import SeatMap3D from '../components/SeatMap3D';
 import ProctoringSetup from '../components/ProctoringSetup';
-import { FaceLandmarker, ObjectDetector, FilesetResolver } from "@mediapipe/tasks-vision";
 import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -43,7 +41,6 @@ export default function StudentDashboard() {
     { role: 'bot', text: 'Hello John! I\'m your Samadhan assistant. How can I help you with your upcoming Advanced Algorithms exam or anything related to education?' }
   ]);
   const [inputValue, setInputValue] = useState('');
-  const [show3DMap, setShow3DMap] = useState(false);
   const [showProctoring, setShowProctoring] = useState(() => {
     return sessionStorage.getItem('show_proctoring') === 'true';
   });
@@ -183,46 +180,9 @@ export default function StudentDashboard() {
     return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
 
-  const [warnings, setWarnings] = useState(0);
-  const [proctorMessage, setProctorMessage] = useState("Initializing Proctoring...");
-  const [materialsVerified, setMaterialsVerified] = useState(false);
-  const landmarkerRef = useRef<FaceLandmarker | null>(null);
-  const objectDetectorRef = useRef<ObjectDetector | null>(null);
-  const requestRef = useRef<number>(0);
-  const violationCooldown = useRef(false);
-
-  useEffect(() => {
-    const initModel = async () => {
-      try {
-        const filesetResolver = await FilesetResolver.forVisionTasks(
-          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
-        );
-        landmarkerRef.current = await FaceLandmarker.createFromOptions(filesetResolver, {
-          baseOptions: {
-            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
-            delegate: "GPU"
-          },
-          outputFaceBlendshapes: true,
-          runningMode: "VIDEO",
-          numFaces: 5
-        });
-        
-        objectDetectorRef.current = await ObjectDetector.createFromOptions(filesetResolver, {
-          baseOptions: {
-            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float16/1/efficientdet_lite0.tflite",
-            delegate: "GPU"
-          },
-          scoreThreshold: 0.5,
-          runningMode: "VIDEO"
-        });
-
-        setProctorMessage("Please show your Pen & Copy to the camera");
-      } catch (e) {
-        console.error("Failed to load MediaPipe models", e);
-      }
-    };
-    initModel();
-  }, []);
+  const [warnings] = useState(0);
+  const [proctorMessage] = useState("Identity Verified");
+  const [materialsVerified] = useState(true);
 
   const questions = [
     { id: 1, text: "Which of the following sorting algorithms has the best average-case time complexity?", options: ["Quick Sort", "Bubble Sort", "Insertion Sort", "Selection Sort"] },
@@ -277,7 +237,6 @@ export default function StudentDashboard() {
       setMediaStream(null);
     }
     setExamTerminated(true);
-    if (requestRef.current) cancelAnimationFrame(requestRef.current);
     
     // Notify invigilator via backend API
     const email = localStorage.getItem('auth_email') || '';
@@ -306,38 +265,6 @@ export default function StudentDashboard() {
     }, 100);
   }, [mediaStream]);
 
-  const handleViolation = useCallback(() => {
-    if (violationCooldown.current) return;
-    
-    setProctorMessage("Warning: Please look at the screen!");
-    setWarnings(prev => {
-      const newWarnings = prev + 1;
-      
-      // Notify invigilator via backend API
-      const email = localStorage.getItem('auth_email') || '';
-      const name = email ? email.split('@')[0] : 'Unknown Student';
-      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || (window.location.hostname === 'localhost' ? 'http://127.0.0.1:5000' : `https://zup-exam-backend-42.loca.lt`);
-      
-      fetch(`${BACKEND_URL}/api/cheat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: name,
-          message: newWarnings >= 2 ? "Exam terminated by AI: User caught looking away multiple times." : "AI Warning: User looking away from screen."
-        })
-      }).catch(err => console.error('Failed to report cheating:', err));
-
-      if (newWarnings === 1) {
-        alert("WARNING: Please look at the screen and ensure your face is visible. Next violation will terminate your exam.");
-        violationCooldown.current = true;
-        setTimeout(() => { violationCooldown.current = false; }, 5000); // 5 sec cooldown
-      } else if (newWarnings >= 2) {
-        terminateExam("You have been caught looking away from the screen multiple times.");
-      }
-      return newWarnings;
-    });
-  }, [terminateExam]);
-
   useEffect(() => {
     if (examStarted && currentQuestion !== prevQuestion.current) {
       if (currentQuestion > 0 && currentQuestion % 2 === 0) {
@@ -350,96 +277,10 @@ export default function StudentDashboard() {
   }, [currentQuestion, examStarted]);
 
   useEffect(() => {
-    let reqId: number;
-
-    const detectFace = () => {
-      if (videoRef.current && videoRef.current.readyState >= 2) {
-        let isUnlocked = false;
-        setMaterialsVerified(prev => {
-          isUnlocked = prev;
-          return prev;
-        });
-
-        if (!isUnlocked && objectDetectorRef.current) {
-          const objResults = objectDetectorRef.current.detectForVideo(videoRef.current, performance.now());
-          // COCO model detects "book" which serves as a proxy for copy/notebook, or "cell phone", etc.
-          const foundMaterials = objResults.detections.some(d => 
-             d.categories.some(c => c.categoryName === 'book' || c.categoryName === 'bottle' || c.categoryName === 'cup' || c.categoryName === 'cell phone')
-          );
-          
-          if (foundMaterials) {
-            setMaterialsVerified(true);
-            isUnlocked = true;
-            setProctorMessage("Face Verified");
-          } else {
-            setProctorMessage("Show Pen/Copy to unlock exam");
-          }
-        }
-
-        if (isUnlocked && landmarkerRef.current) {
-          const results = landmarkerRef.current.detectForVideo(videoRef.current, performance.now());
-          
-          if (results.faceLandmarks && results.faceLandmarks.length > 1) {
-            terminateExam("Multiple faces detected in the camera frame. Unauthorized assistance is strictly prohibited.");
-            return;
-          }
-
-          if (results.faceBlendshapes && results.faceBlendshapes.length > 0) {
-            const blendshapes = results.faceBlendshapes[0].categories;
-            const eyeLookOutLeft = blendshapes.find(b => b.categoryName === "eyeLookOutLeft")?.score || 0;
-            const eyeLookOutRight = blendshapes.find(b => b.categoryName === "eyeLookOutRight")?.score || 0;
-            const eyeLookUpLeft = blendshapes.find(b => b.categoryName === "eyeLookUpLeft")?.score || 0;
-            const eyeLookDownLeft = blendshapes.find(b => b.categoryName === "eyeLookDownLeft")?.score || 0;
-            
-            // Increase threshold to avoid false positives, ~0.65 to 0.75 range
-            const isLookingAway = eyeLookOutLeft > 0.7 || eyeLookOutRight > 0.7 || eyeLookUpLeft > 0.65 || eyeLookDownLeft > 0.65;
-            
-            let headTurned = false;
-            if (results.faceLandmarks && results.faceLandmarks.length > 0) {
-              const landmarks = results.faceLandmarks[0];
-              const nose = landmarks[1];
-              const leftEye = landmarks[33];
-              const rightEye = landmarks[263];
-              
-              const leftDist = Math.sqrt(Math.pow(nose.x - leftEye.x, 2) + Math.pow(nose.y - leftEye.y, 2) + Math.pow(nose.z - leftEye.z, 2));
-              const rightDist = Math.sqrt(Math.pow(nose.x - rightEye.x, 2) + Math.pow(nose.y - rightEye.y, 2) + Math.pow(nose.z - rightEye.z, 2));
-              
-              // Ratio greater than 2.5 means head is turned significantly to one side
-              if (Math.max(leftDist, rightDist) / Math.min(leftDist, rightDist) > 2.5) {
-                headTurned = true;
-              }
-            }
-
-            if (isLookingAway || headTurned) {
-              handleViolation();
-            } else {
-              if (!violationCooldown.current) {
-                setProctorMessage("Face Verified");
-              }
-            }
-          } else {
-            // No face detected
-            handleViolation();
-          }
-        }
-      }
-      
-      // Only continue if exam is not terminated
-      if (!examTerminated) {
-        reqId = requestAnimationFrame(detectFace);
-      }
-    };
-
     if (examStarted && videoRef.current && mediaStream) {
       videoRef.current.srcObject = mediaStream;
-      videoRef.current.onloadeddata = () => {
-        detectFace();
-      };
     }
-    return () => {
-      if (reqId) cancelAnimationFrame(reqId);
-    };
-  }, [examStarted, mediaStream, examTerminated, handleViolation]);
+  }, [examStarted, mediaStream]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -988,14 +829,10 @@ export default function StudentDashboard() {
                   <IntentStatusBadge intentStatus={studentRecord.intentStatus} fallbackStatus={studentRecord.intent} />
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 text-sm text-slate-600 dark:text-slate-400">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6 text-sm text-slate-600 dark:text-slate-400">
                 <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-lg border border-slate-200/50 dark:border-slate-800/40">
                   <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Registration</div>
                   <div className="font-bold text-slate-900 dark:text-white">{studentRecord.roll}</div>
-                </div>
-                <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-lg border border-slate-200/50 dark:border-slate-800/40">
-                  <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Seat Assignment</div>
-                  <div className="font-bold text-slate-900 dark:text-white">{studentRecord.seat}</div>
                 </div>
                 <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-lg border border-slate-200/50 dark:border-slate-800/40">
                   <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Attempt Details</div>
@@ -1054,26 +891,6 @@ export default function StudentDashboard() {
               </motion.div>
             )}
           </motion.div>
-
-          {/* Seat Finder */}
-          <motion.div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm rounded-xl p-6">
-            <div className="flex items-center space-x-3 mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
-              <div className="bg-indigo-50 dark:bg-indigo-900/20 p-2.5 rounded-lg text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800/30">
-                <MapPin size={20} />
-              </div>
-              <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Seat Navigation</h2>
-            </div>
-            
-            <div className="bg-slate-50 dark:bg-slate-950 rounded-xl h-64 flex items-center justify-center border border-slate-200 dark:border-slate-800 overflow-hidden relative">
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-100/50 via-slate-50 to-slate-50 dark:from-indigo-900/10 dark:via-slate-950 dark:to-slate-950"></div>
-              <div className="text-center z-10 p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
-                <MapPin size={32} className="text-indigo-600 dark:text-indigo-400 mx-auto mb-3" />
-                <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-1">Block A - Hall 3</h3>
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Row 4, Seat 12</p>
-                <button onClick={() => setShow3DMap(true)} className="mt-5 btn-secondary text-sm px-6 py-2">Open 3D Map</button>
-              </div>
-            </div>
-          </motion.div>
         </div>
 
         {/* Sidebar */}
@@ -1130,7 +947,6 @@ export default function StudentDashboard() {
         </div>
       </div>
       )}
-      {show3DMap && <SeatMap3D targetRow={4} targetCol={12} onClose={() => setShow3DMap(false)} />}
       {showProctoring && <ProctoringSetup 
         onComplete={(stream) => { 
           setMediaStream(stream);

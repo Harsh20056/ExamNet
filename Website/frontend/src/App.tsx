@@ -1,30 +1,26 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './layouts/Layout';
 import LandingPage from './pages/LandingPage';
-import StudentDashboard from './pages/StudentDashboard';
-import InvigilatorDashboard from './pages/InvigilatorDashboard';
-import AdminDashboard from './pages/AdminDashboard';
 import Login from './pages/Login';
+import ProtectedRoute from './components/ProtectedRoute';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider } from './contexts/AuthContext';
 import { Toaster } from 'react-hot-toast';
 
-const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles: string[] }) => {
-  const { role } = useAuth();
-  
-  if (!role) {
-    return <Navigate to="/login" replace />;
-  }
-  
-  if (!allowedRoles.includes(role)) {
-    // If logged in but wrong role, redirect to their respective dashboard
-    if (role === 'admin') return <Navigate to="/admin" replace />;
-    if (role === 'invigilator') return <Navigate to="/invigilator" replace />;
-    return <Navigate to="/student" replace />;
-  }
+import MarkingWorkspace from './pages/examiner/MarkingWorkspace';
+import ExaminerHome from './pages/examiner/ExaminerHome';
+import IdentityCheckPage from './pages/examiner/IdentityCheck';
+import ModerationQueue from './pages/moderator/ModerationQueue';
+import ReviewSheet from './pages/moderator/ReviewSheet';
 
-  return <>{children}</>;
-};
+// Controller Pages
+import LiveDashboard from './pages/controller/LiveDashboard';
+import ExamSetup from './pages/controller/ExamSetup';
+import SheetsManager from './pages/controller/SheetsManager';
+import ExaminerAnalytics from './pages/controller/ExaminerAnalytics';
+import AlertsPage from './pages/controller/AlertsPage';
+import AuditLog from './pages/controller/AuditLog';
+import ExportPage from './pages/controller/ExportPage';
 
 function App() {
   return (
@@ -34,32 +30,108 @@ function App() {
         <Router>
           <Layout>
             <Routes>
+              {/* Public Routes */}
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<Login />} />
               
+              {/* Examiner Routes */}
               <Route 
-                path="/student" 
+                path="/examiner" 
                 element={
-                  <ProtectedRoute allowedRoles={['student']}>
-                    <StudentDashboard />
+                  <ProtectedRoute allowedRoles={['examiner']}>
+                    <ExaminerHome />
                   </ProtectedRoute>
                 } 
               />
-              
               <Route 
-                path="/invigilator" 
+                path="/examiner/identity" 
                 element={
-                  <ProtectedRoute allowedRoles={['invigilator', 'admin']}>
-                    <InvigilatorDashboard />
+                  <ProtectedRoute allowedRoles={['examiner']}>
+                    <IdentityCheckPage />
                   </ProtectedRoute>
                 } 
               />
-              
               <Route 
-                path="/admin" 
+                path="/examiner/mark/:sheetId" 
                 element={
-                  <ProtectedRoute allowedRoles={['admin']}>
-                    <AdminDashboard />
+                  <ProtectedRoute allowedRoles={['examiner']} requireIdentity={true}>
+                    <MarkingWorkspace />
+                  </ProtectedRoute>
+                } 
+              />
+
+              {/* Moderator Routes */}
+              <Route 
+                path="/moderator" 
+                element={
+                  <ProtectedRoute allowedRoles={['moderator']}>
+                    <ModerationQueue />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/moderator/review/:sheetId" 
+                element={
+                  <ProtectedRoute allowedRoles={['moderator']}>
+                    <ReviewSheet />
+                  </ProtectedRoute>
+                } 
+              />
+
+              {/* Controller Routes */}
+              <Route 
+                path="/controller" 
+                element={
+                  <ProtectedRoute allowedRoles={['controller']}>
+                    <LiveDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/controller/exams" 
+                element={
+                  <ProtectedRoute allowedRoles={['controller']}>
+                    <ExamSetup />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/controller/sheets" 
+                element={
+                  <ProtectedRoute allowedRoles={['controller']}>
+                    <SheetsManager />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/controller/examiners" 
+                element={
+                  <ProtectedRoute allowedRoles={['controller']}>
+                    <ExaminerAnalytics />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/controller/alerts" 
+                element={
+                  <ProtectedRoute allowedRoles={['controller']}>
+                    <AlertsPage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/controller/audit" 
+                element={
+                  <ProtectedRoute allowedRoles={['controller']}>
+                    <AuditLog />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/controller/export" 
+                element={
+                  <ProtectedRoute allowedRoles={['controller']}>
+                    <ExportPage />
                   </ProtectedRoute>
                 } 
               />

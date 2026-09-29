@@ -6,35 +6,35 @@
 
 @layer base {
   :root {
-    /* Primary brand colors: Brown (for Light Mode) */
-    --color-primary-50: 250 248 246;
-    --color-primary-100: 242 235 228;
-    --color-primary-200: 229 215 203;
-    --color-primary-300: 209 186 168;
-    --color-primary-400: 180 148 124;
-    --color-primary-500: 142 111 87;
-    --color-primary-600: 116 88 67;
-    --color-primary-700: 94 70 53;
-    --color-primary-800: 73 54 41;
-    --color-primary-900: 58 43 32;
-    --color-primary-950: 37 27 20;
+    /* Primary brand colors: Vibrant Royal Blue (matching modern enterprise light UI) */
+    --color-primary-50: 239 246 255;
+    --color-primary-100: 219 234 254;
+    --color-primary-200: 191 219 254;
+    --color-primary-300: 147 197 253;
+    --color-primary-400: 96 165 250;
+    --color-primary-500: 59 130 246;
+    --color-primary-600: 37 99 235;
+    --color-primary-700: 29 78 216;
+    --color-primary-800: 30 64 175;
+    --color-primary-900: 30 58 138;
+    --color-primary-950: 23 37 84;
 
-    /* Neutrals: Rich Black and Dark tones (for Light Mode) */
-    --color-slate-50: 250 250 250;     /* light border/bg overlap */
-    --color-slate-100: 229 229 229;   /* lines / inner dividers */
-    --color-slate-200: 212 212 212;   /* borders / outlines */
-    --color-slate-300: 163 163 163;   /* placeholders */
-    --color-slate-400: 115 115 115;   /* secondary text */
-    --color-slate-500: 82 82 82;       /* body grey text */
-    --color-slate-600: 38 38 38;       /* strong dark text */
-    --color-slate-700: 20 20 20;       /* headings */
-    --color-slate-800: 10 10 10;       /* body text */
-    --color-slate-900: 0 0 0;          /* solid black text / background */
-    --color-slate-950: 0 0 0;          /* solid black text / background */
+    /* Neutrals: Crisp Cool Slate (for clean light mode) */
+    --color-slate-50: 248 250 252;     /* clean slate-50 background */
+    --color-slate-100: 241 245 249;   /* light panels / inner dividers */
+    --color-slate-200: 226 232 240;   /* border outlines */
+    --color-slate-300: 203 213 225;   /* subtle borders / placeholders */
+    --color-slate-400: 148 163 184;   /* secondary text */
+    --color-slate-500: 100 116 139;   /* body muted text */
+    --color-slate-600: 71 85 105;     /* strong secondary text */
+    --color-slate-700: 51 65 85;      /* sub-headings */
+    --color-slate-800: 30 41 59;      /* body dark text */
+    --color-slate-900: 15 23 42;      /* deep slate headings */
+    --color-slate-950: 2 6 23;        /* ultra dark */
 
     --color-surface-light: 255 255 255;
     --color-surface-dark: 23 23 23;
-    --color-background-light: 255 255 255;
+    --color-background-light: 248 250 252;
     --color-background-dark: 10 10 10;
   }
 
@@ -78,22 +78,22 @@
 
 @layer components {
   .glass-card {
-    @apply bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm rounded-xl;
+    @apply bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm rounded-2xl;
   }
   
   .btn-primary {
-    @apply px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-all duration-200 font-medium shadow-sm active:scale-[0.98] focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-950 flex items-center justify-center;
+    @apply px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl transition-all duration-200 font-semibold shadow-sm hover:shadow active:scale-[0.98] focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-950 flex items-center justify-center;
   }
 
   .btn-secondary {
-    @apply px-5 py-2.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-lg transition-all duration-200 font-medium active:scale-[0.98] border border-slate-200 dark:border-slate-700 shadow-sm focus:ring-2 focus:ring-slate-200 dark:focus:ring-slate-700 focus:ring-offset-2 dark:focus:ring-offset-slate-950 flex items-center justify-center;
+    @apply px-5 py-2.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl transition-all duration-200 font-semibold active:scale-[0.98] border border-slate-200 dark:border-slate-700 shadow-sm focus:ring-2 focus:ring-slate-200 dark:focus:ring-slate-700 focus:ring-offset-2 dark:focus:ring-offset-slate-950 flex items-center justify-center;
   }
 
   .nav-link {
-    @apply text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 font-medium transition-colors duration-200 rounded-md px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800/50;
+    @apply text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 font-medium transition-colors duration-200 rounded-lg px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800/50;
   }
   
   .input-field {
-    @apply w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-4 py-2.5 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-shadow duration-200 shadow-sm;
+    @apply w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-shadow duration-200 shadow-sm;
   }
 }

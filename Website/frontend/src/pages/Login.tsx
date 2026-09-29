@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { User, Users, ShieldAlert, KeyRound, ArrowRight, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { FileEdit, CheckSquare, ShieldCheck as ShieldIcon, KeyRound, ArrowRight, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { 
   signInWithEmailAndPassword, 
@@ -15,7 +15,7 @@ import { toast } from 'react-hot-toast';
 
 export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
-  const [loginType, setLoginType] = useState<'student' | 'invigilator' | 'admin'>('student');
+  const [loginType, setLoginType] = useState<'examiner' | 'moderator' | 'controller'>('examiner');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
@@ -28,12 +28,12 @@ export default function Login() {
   const navigate = useNavigate();
 
   React.useEffect(() => {
-    if (role === 'student') {
-      navigate('/student', { replace: true });
-    } else if (role === 'admin') {
-      navigate('/admin', { replace: true });
-    } else if (role === 'invigilator') {
-      navigate('/invigilator', { replace: true });
+    if (role === 'examiner') {
+      navigate('/examiner', { replace: true });
+    } else if (role === 'moderator') {
+      navigate('/moderator', { replace: true });
+    } else if (role === 'controller') {
+      navigate('/controller', { replace: true });
     }
   }, [role, navigate]);
 
@@ -101,12 +101,12 @@ export default function Login() {
       }
       
       setRoleOverride(finalRole);
-      if (finalRole === 'student') {
-        navigate('/student');
-      } else if (finalRole === 'admin') {
-        navigate('/admin');
-      } else if (finalRole === 'invigilator') {
-        navigate('/invigilator');
+      if (finalRole === 'examiner') {
+        navigate('/examiner');
+      } else if (finalRole === 'moderator') {
+        navigate('/moderator');
+      } else if (finalRole === 'controller') {
+        navigate('/controller');
       }
     } catch (e: unknown) {
       const err = e as { code?: string; message?: string };
@@ -167,12 +167,12 @@ export default function Login() {
       toast.success("Google Login successful!", { duration: 2000 });
       setRoleOverride(finalRole);
       
-      if (finalRole === 'student') {
-        navigate('/student');
-      } else if (finalRole === 'admin') {
-        navigate('/admin');
-      } else if (finalRole === 'invigilator') {
-        navigate('/invigilator');
+      if (finalRole === 'examiner') {
+        navigate('/examiner');
+      } else if (finalRole === 'moderator') {
+        navigate('/moderator');
+      } else if (finalRole === 'controller') {
+        navigate('/controller');
       }
     } catch (e: unknown) {
       const err = e as { code?: string; message?: string };
@@ -203,62 +203,62 @@ export default function Login() {
             </div>
             <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white mb-4">SAMADHAN X Portal</h1>
             <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-8">
-              Access your examination environment. Our role-based infrastructure ensures strict data separation and maximum security.
+              Digital on-screen evaluation and moderation system. Role-based security guarantees integrity, auditability, and tamper-proof marks.
             </p>
             
             <div className="space-y-4">
-              {/* Student Card */}
+              {/* Examiner Card */}
               <div 
-                onClick={() => setLoginType('student')}
+                onClick={() => setLoginType('examiner')}
                 className={`p-4 rounded-xl transition-all cursor-pointer select-none border ${
-                  loginType === 'student' 
+                  loginType === 'examiner' 
                     ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/10 shadow-sm' 
                     : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-primary-500/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/30'
                 }`}
               >
                 <h3 className="font-semibold flex items-center text-sm text-slate-900 dark:text-white">
-                  <User className="mr-2 text-primary-600 dark:text-primary-400" size={16} /> 
-                  Student Access
+                  <FileEdit className="mr-2 text-primary-600 dark:text-primary-400" size={16} /> 
+                  Examiner Workspace
                 </h3>
-                <p className="text-xs text-slate-500 mt-1">Access upcoming exams and admit cards.</p>
+                <p className="text-xs text-slate-500 mt-1">Verify identity and evaluate assigned digital answer sheets.</p>
               </div>
 
-              {/* Invigilator Card */}
+              {/* Moderator Card */}
               <div 
-                onClick={() => setLoginType('invigilator')}
+                onClick={() => setLoginType('moderator')}
                 className={`p-4 rounded-xl transition-all cursor-pointer select-none border ${
-                  loginType === 'invigilator' 
+                  loginType === 'moderator' 
                     ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/10 shadow-sm' 
                     : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-primary-500/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/30'
                 }`}
               >
                 <h3 className="font-semibold flex items-center text-sm text-slate-900 dark:text-white">
-                  <Users className="mr-2 text-primary-600 dark:text-primary-400" size={16} /> 
-                  Invigilator Panel
+                  <CheckSquare className="mr-2 text-primary-600 dark:text-primary-400" size={16} /> 
+                  Moderator Review
                 </h3>
-                <p className="text-xs text-slate-500 mt-1">Manage student sessions and identity verification.</p>
+                <p className="text-xs text-slate-500 mt-1">Review flagged evaluations and sample answer papers.</p>
               </div>
 
-              {/* Admin Card */}
+              {/* Controller Card */}
               <div 
-                onClick={() => setLoginType('admin')}
+                onClick={() => setLoginType('controller')}
                 className={`p-4 rounded-xl transition-all cursor-pointer select-none border ${
-                  loginType === 'admin' 
+                  loginType === 'controller' 
                     ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/10 shadow-sm' 
                     : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-primary-500/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/30'
                 }`}
               >
                 <h3 className="font-semibold flex items-center text-sm text-slate-900 dark:text-white">
-                  <ShieldAlert className="mr-2 text-primary-600 dark:text-primary-400" size={16} /> 
-                  Admin Command
+                  <ShieldIcon className="mr-2 text-primary-600 dark:text-primary-400" size={16} /> 
+                  Controller of Exams
                 </h3>
-                <p className="text-xs text-slate-500 mt-1">Global command center and live telemetry tracking.</p>
+                <p className="text-xs text-slate-500 mt-1">Global oversight, quotas, anomaly detection, and final exports.</p>
               </div>
             </div>
           </div>
           <div className="mt-12 flex items-center text-xs text-slate-500 font-medium">
             <ShieldCheck size={16} className="mr-2 text-emerald-500" />
-            End-to-End Encrypted Connection
+            End-to-End Encrypted Evaluation Pipeline
           </div>
         </div>
 
@@ -268,28 +268,28 @@ export default function Login() {
           {/* Form Tabs */}
           <div className="flex space-x-1 bg-slate-100 dark:bg-slate-800/50 p-1 rounded-lg mb-10 w-full max-w-md mx-auto">
             <button
-              onClick={() => setLoginType('student')}
+              onClick={() => setLoginType('examiner')}
               className={`flex-1 py-2 text-xs font-semibold rounded-md transition-all ${
-                loginType === 'student' ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                loginType === 'examiner' ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
               }`}
             >
-              Student
+              Examiner
             </button>
             <button
-              onClick={() => setLoginType('invigilator')}
+              onClick={() => setLoginType('moderator')}
               className={`flex-1 py-2 text-xs font-semibold rounded-md transition-all ${
-                loginType === 'invigilator' ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                loginType === 'moderator' ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
               }`}
             >
-              Invigilator
+              Moderator
             </button>
             <button
-              onClick={() => setLoginType('admin')}
+              onClick={() => setLoginType('controller')}
               className={`flex-1 py-2 text-xs font-semibold rounded-md transition-all ${
-                loginType === 'admin' ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                loginType === 'controller' ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
               }`}
             >
-              Admin
+              Controller
             </button>
           </div>
 
@@ -299,11 +299,11 @@ export default function Login() {
                 {isLogin ? 'Sign in to account' : 'Create new account'}
               </h2>
               <p className="text-sm text-slate-500 mt-2 font-medium">
-                {loginType === 'student' 
-                  ? 'Student Portal Access' 
-                  : loginType === 'admin' 
-                  ? 'Global Admin Command Center' 
-                  : 'Exam Session Invigilation'
+                {loginType === 'examiner' 
+                  ? 'Examiner Portal Access' 
+                  : loginType === 'controller' 
+                  ? 'Exam Controller Command Center' 
+                  : 'Moderation & Quality Review'
                 }
               </p>
             </div>
@@ -336,11 +336,11 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={
-                  loginType === 'student' 
-                    ? 'student@example.com' 
-                    : loginType === 'admin' 
-                    ? 'admin@example.com' 
-                    : 'invigilator@example.com'
+                  loginType === 'examiner' 
+                    ? 'examiner@demo.com' 
+                    : loginType === 'controller' 
+                    ? 'controller@demo.com' 
+                    : 'moderator@demo.com'
                 }
                 className="input-field"
               />
@@ -451,35 +451,35 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => {
-                  setEmail('student@demo.com');
+                  setEmail('examiner@demo.com');
                   setPassword('Password@123');
-                  setLoginType('student');
+                  setLoginType('examiner');
                 }}
                 className="flex-1 py-1.5 px-2 text-xs font-medium bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors shadow-sm"
               >
-                Student
+                Examiner
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  setEmail('invigilator@demo.com');
+                  setEmail('moderator@demo.com');
                   setPassword('Password@123');
-                  setLoginType('invigilator');
+                  setLoginType('moderator');
                 }}
                 className="flex-1 py-1.5 px-2 text-xs font-medium bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors shadow-sm"
               >
-                Invigilator
+                Moderator
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  setEmail('admin@demo.com');
+                  setEmail('controller@demo.com');
                   setPassword('Password@123');
-                  setLoginType('admin');
+                  setLoginType('controller');
                 }}
                 className="flex-1 py-1.5 px-2 text-xs font-medium bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors shadow-sm"
               >
-                Admin
+                Controller
               </button>
             </div>
           </div>

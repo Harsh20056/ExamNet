@@ -88,7 +88,7 @@ export function generateQuestionPaperPDF(details: ExamPaperDetails): string {
   doc.setFont('helvetica', 'bold');
   doc.text('INSTRUCTIONS TO CANDIDATES:', 14, 68);
   doc.setFont('helvetica', 'normal');
-  const instructions = details.instructions || '1. All questions are compulsory.\n2. Do not exit full-screen or close camera window during 3-hour live countdown.\n3. Automatic proctoring monitoring is active throughout the exam session.';
+  const instructions = details.instructions || '1. All questions are compulsory.\n2. Do not exit secure marking mode or close camera window during 3-hour live countdown.\n3. Automatic identity check monitoring is active throughout the exam session.';
   const splitInstr = doc.splitTextToSize(instructions, 180);
   doc.text(splitInstr, 14, 74);
 

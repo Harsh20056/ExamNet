@@ -192,17 +192,17 @@ export default function AdminDashboard() {
         if (prev.some(s => s.id === student.id)) return prev;
         return [...prev, student];
       });
-      addLog(`[LIVE ENTRY] Student Present: ${student.name} (Roll: ${student.roll}) assigned to Seat ${student.seat} at Center 1.`, 'info');
+      addLog(`[LIVE ENTRY] Answer Sheet Admitted: ${student.name} (Sheet ID: ${student.roll}) at Center 1.`, 'info');
     });
 
     socket.on('student_updated', (updatedStudent: Student) => {
       setStudents(prev => prev.map(s => s.id === updatedStudent.id ? updatedStudent : s));
       if (updatedStudent.status === 'verified') {
-        addLog(`[LIVE FACE ID] Verification Successful: ${updatedStudent.name} (Roll: ${updatedStudent.roll}) verified at Center 1.`, 'success');
+        addLog(`[LIVE FACE ID] Verification Successful: ${updatedStudent.name} (Sheet ID: ${updatedStudent.roll}) verified at Center 1.`, 'success');
       } else if (updatedStudent.status === 'flagged') {
-        addLog(`[LIVE PROCTOR] Security Flag Raised: ${updatedStudent.name} (Roll: ${updatedStudent.roll}) flagged for cheating at Center 1.`, 'error');
+        addLog(`[LIVE PROCTOR] Security Flag Raised: ${updatedStudent.name} (Sheet ID: ${updatedStudent.roll}) flagged for marking anomaly at Center 1.`, 'error');
       } else {
-        addLog(`[LIVE UPDATE] Student updated: ${updatedStudent.name} (Roll: ${updatedStudent.roll}) at Center 1.`, 'info');
+        addLog(`[LIVE UPDATE] Answer sheet updated: ${updatedStudent.name} (Sheet ID: ${updatedStudent.roll}) at Center 1.`, 'info');
       }
     });
 
@@ -305,9 +305,9 @@ export default function AdminDashboard() {
         <div>
           <div className="flex items-center space-x-3 mb-2">
             <Globe className="text-primary-600 dark:text-primary-400 animate-pulse" size={28} />
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Global Command Center</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Controller Command Center</h1>
           </div>
-          <p className="text-slate-600 dark:text-slate-400">High-level real-time overview of all 6 examination centres.</p>
+          <p className="text-slate-600 dark:text-slate-400">High-level real-time evaluation overview of all 6 assessment centres.</p>
         </div>
         <div className="flex items-center space-x-4">
           <div className="flex items-center px-3.5 py-1.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
@@ -335,7 +335,7 @@ export default function AdminDashboard() {
           </div>
         </motion.div>
 
-        {/* Total Students */}
+        {/* Total Answer Sheets */}
         <motion.div 
           initial={{ opacity: 0, y: 15 }} 
           animate={{ opacity: 1, y: 0 }}
@@ -347,11 +347,11 @@ export default function AdminDashboard() {
           </div>
           <div>
             <div className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">{totalExpected}</div>
-            <div className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Expected Students</div>
+            <div className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Expected Answer Sheets</div>
           </div>
         </motion.div>
 
-        {/* Present Students */}
+        {/* Received Answer Sheets */}
         <motion.div 
           initial={{ opacity: 0, y: 15 }} 
           animate={{ opacity: 1, y: 0 }}
@@ -363,7 +363,7 @@ export default function AdminDashboard() {
           </div>
           <div>
             <div className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">{totalPresent}</div>
-            <div className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Present Students</div>
+            <div className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Received Answer Sheets</div>
           </div>
         </motion.div>
 
@@ -539,15 +539,15 @@ export default function AdminDashboard() {
               <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center">
                 <FileSpreadsheet className="text-slate-400 mr-2" size={18} />
                 {activeCenterId === 1 
-                  ? 'Center 1 (Live - Hall 3) Admitted Students Directory' 
-                  : `${STATIC_CENTERS.find(c => c.id === activeCenterId)?.name} Admitted Students Directory`
+                  ? 'Center 1 (Live - Hall 3) Answer Sheets Directory' 
+                  : `${STATIC_CENTERS.find(c => c.id === activeCenterId)?.name} Answer Sheets Directory`
                 }
               </h2>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-450" size={15} />
                 <input 
                   type="text" 
-                  placeholder="Search live roll/name..." 
+                  placeholder="Search sheet ID / candidate..." 
                   className="pl-9 pr-4 py-1.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-750 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-primary-500 w-52 shadow-sm text-slate-900 dark:text-white"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -565,9 +565,8 @@ export default function AdminDashboard() {
                 <table className="w-full text-left border-collapse">
                   <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 text-xs font-semibold uppercase border-b border-slate-200 dark:border-slate-700 sticky top-0">
                     <tr>
-                      <th className="p-3 pl-6">Roll No</th>
-                      <th className="p-3">Name</th>
-                      <th className="p-3">Seat</th>
+                      <th className="p-3 pl-6">Sheet ID</th>
+                      <th className="p-3">Candidate / Sheet</th>
                       <th className="p-3 text-center">Intent Status</th>
                       <th className="p-3 text-center">Status</th>
                     </tr>
@@ -577,7 +576,6 @@ export default function AdminDashboard() {
                       <tr key={student.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors text-sm">
                         <td className="p-3 pl-6 font-semibold text-slate-900 dark:text-white">{student.roll}</td>
                         <td className="p-3 text-slate-700 dark:text-slate-350">{student.name}</td>
-                        <td className="p-3 text-slate-600 dark:text-slate-400 font-mono">{student.seat}</td>
                         <td className="p-3 text-center">
                           <IntentStatusBadge intentStatus={student.intentStatus} fallbackStatus={student.intent} />
                         </td>
@@ -615,7 +613,7 @@ export default function AdminDashboard() {
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6">
             <h2 className="text-lg font-bold text-red-650 dark:text-red-400 flex items-center mb-4">
               <ShieldAlert className="mr-2.5 animate-pulse" size={20} />
-              Recent Proctoring Anomalies
+              Recent Marking Anomaly Alerts
             </h2>
             <div className="space-y-4 max-h-[22rem] overflow-y-auto pr-1">
               <AnimatePresence>
@@ -628,7 +626,7 @@ export default function AdminDashboard() {
                     className="bg-red-50/60 dark:bg-red-950/10 border border-red-200 dark:border-red-900/50 p-4 rounded-xl flex flex-col shadow-sm"
                   >
                     <div className="flex justify-between items-start mb-2">
-                      <span className="font-semibold text-red-800 dark:text-red-300 text-xs">Roll: {alert.roll} ({alert.name})</span>
+                      <span className="font-semibold text-red-800 dark:text-red-300 text-xs">Sheet ID: {alert.roll} ({alert.name})</span>
                       <span className="text-[10px] text-red-500 bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded-md font-mono">
                         {new Date(alert.timestamp).toLocaleTimeString()}
                       </span>

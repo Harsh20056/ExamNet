@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, CheckCircle, AlertCircle, Search, UserCheck, Plus, Trash2, Clock, Camera } from 'lucide-react';
+import { CheckCircle, AlertCircle, Search, UserCheck, Plus, Trash2, Clock, Camera } from 'lucide-react';
 import { io } from 'socket.io-client';
 import CameraCaptureModal from '../components/CameraCaptureModal';
 import ExamPaperBroadcaster from '../components/ExamPaperBroadcaster';
@@ -180,14 +180,10 @@ export default function InvigilatorDashboard() {
 
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newStudent.name || !newStudent.roll || !newStudent.seat) return;
+    if (!newStudent.name || !newStudent.roll) return;
 
     if (students.some(s => s.roll.toLowerCase() === newStudent.roll.trim().toLowerCase())) {
-      alert(`Warning: Roll Number "${newStudent.roll}" already exists!`);
-      return;
-    }
-    if (students.some(s => s.seat.toLowerCase() === newStudent.seat.trim().toLowerCase())) {
-      alert(`Warning: Seat "${newStudent.seat}" is already assigned!`);
+      alert(`Warning: Sheet ID "${newStudent.roll}" already exists!`);
       return;
     }
 
@@ -300,9 +296,9 @@ export default function InvigilatorDashboard() {
     <div className="space-y-8 animate-fade-in relative">
       <header className="flex justify-between items-end mb-8 border-b border-slate-200 dark:border-slate-800 pb-6 flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white mb-2">Invigilator Panel</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white mb-2">Moderator Review Panel</h1>
           <p className="text-slate-650 dark:text-slate-400 flex items-center font-medium">
-            <span>{activeCenterId === 1 ? 'Local Campus - Hall 3' : STATIC_CENTERS.find(c => c.id === activeCenterId)?.name}</span>
+            <span>{activeCenterId === 1 ? 'Evaluation Bundle - Pack 3' : STATIC_CENTERS.find(c => c.id === activeCenterId)?.name}</span>
             <span className="mx-2">•</span>
             <span>Advanced Algorithms (Live Telemetry Focus)</span>
           </p>
@@ -321,7 +317,7 @@ export default function InvigilatorDashboard() {
       {cheatingAlerts.length > 0 && (
         <div className="mb-8 space-y-3">
           <h2 className="text-lg font-semibold text-red-600 dark:text-red-400 flex items-center">
-            <AlertCircle className="mr-2" size={20} /> Action Required: Recent Alerts
+            <AlertCircle className="mr-2" size={20} /> Action Required: Marking Anomaly Alerts
           </h2>
           <AnimatePresence>
             {cheatingAlerts.map(alert => (
@@ -333,7 +329,7 @@ export default function InvigilatorDashboard() {
                 className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/50 p-4 rounded-xl flex items-start justify-between shadow-sm"
               >
                 <div>
-                  <p className="font-semibold text-red-800 dark:text-red-300 text-sm mb-1">Roll: {alert.roll} ({alert.name})</p>
+                  <p className="font-semibold text-red-800 dark:text-red-300 text-sm mb-1">Sheet ID: {alert.roll} ({alert.name})</p>
                   <p className="text-red-600 dark:text-red-400 text-sm">{alert.message}</p>
                 </div>
                 <div className="text-xs font-medium text-red-500 bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded-md">
@@ -348,16 +344,7 @@ export default function InvigilatorDashboard() {
       {/* Invigilator Question Paper Broadcast & 3-Hour Timer */}
       <ExamPaperBroadcaster socket={socket} backendUrl={BACKEND_URL} totalExpected={activeExpected} presentCount={presentCount} />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm rounded-xl p-6 flex items-center space-x-4">
-          <div className="bg-primary-50 dark:bg-primary-900/20 p-3.5 rounded-lg text-primary-600 dark:text-primary-400 border border-primary-100 dark:border-primary-800/30">
-            <Users size={24} />
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-slate-900 dark:text-white">{presentCount}<span className="text-lg text-slate-400 font-normal">/{activeExpected}</span></div>
-            <div className="text-sm font-medium text-slate-500 dark:text-slate-400">Present</div>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm rounded-xl p-6 flex items-center space-x-4">
           <div className="bg-emerald-50 dark:bg-emerald-900/20 p-3.5 rounded-lg text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/30">
             <CheckCircle size={24} />
@@ -389,7 +376,7 @@ export default function InvigilatorDashboard() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               <input 
                 type="text" 
-                placeholder="Search roll no..." 
+                placeholder="Search sheet ID..." 
                 className="pl-9 pr-4 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-64 shadow-sm"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -404,9 +391,8 @@ export default function InvigilatorDashboard() {
           <table className="w-full text-left border-collapse">
             <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider font-semibold border-b border-slate-200 dark:border-slate-700">
               <tr>
-                <th className="p-4 pl-6">Roll No</th>
-                <th className="p-4">Student Name</th>
-                <th className="p-4">Seat</th>
+                <th className="p-4 pl-6">Sheet ID</th>
+                <th className="p-4">Candidate / Sheet</th>
                 <th className="p-4">AI Match</th>
                 <th className="p-4">Intent</th>
                 <th className="p-4">Status</th>
@@ -424,7 +410,6 @@ export default function InvigilatorDashboard() {
                   >
                     <td className="p-4 pl-6 font-medium text-slate-900 dark:text-white">{student.roll}</td>
                     <td className="p-4 text-slate-700 dark:text-slate-300">{student.name}</td>
-                    <td className="p-4 text-slate-600 dark:text-slate-400 font-mono text-sm">{student.seat}</td>
                     <td className="p-4">
                       {student.referenceDescriptor ? (
                         <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800/30 dark:text-emerald-400">
@@ -473,7 +458,7 @@ export default function InvigilatorDashboard() {
                 ))}
               {filteredStudents.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-12 text-center text-slate-500 bg-slate-50/50 dark:bg-slate-900/20">
+                  <td colSpan={7} className="p-12 text-center text-slate-500 bg-slate-50/50 dark:bg-slate-900/20">
                     <div className="flex flex-col items-center justify-center">
                       <Search size={32} className="text-slate-300 dark:text-slate-600 mb-3" />
                       <p className="font-medium text-slate-600 dark:text-slate-400">No records found</p>
@@ -494,16 +479,12 @@ export default function InvigilatorDashboard() {
             <h3 className="text-xl font-bold mb-6 text-slate-900 dark:text-white tracking-tight">Add Manual Entry</h3>
             <form onSubmit={handleAddStudent} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Student Name</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Candidate / Subject</label>
                 <input required type="text" value={newStudent.name} onChange={e => setNewStudent({...newStudent, name: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-md px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 text-slate-900 dark:text-white" placeholder="John Doe" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Roll Number</label>
-                <input required type="text" value={newStudent.roll} onChange={e => setNewStudent({...newStudent, roll: e.target.value})} className="input-field" placeholder="CS-2026-001" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Assigned Seat</label>
-                <input required type="text" value={newStudent.seat} onChange={e => setNewStudent({...newStudent, seat: e.target.value})} className="input-field" placeholder="A-12" />
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Sheet ID</label>
+                <input required type="text" value={newStudent.roll} onChange={e => setNewStudent({...newStudent, roll: e.target.value, seat: newStudent.seat || 'N/A'})} className="input-field" placeholder="CS-2026-001" />
               </div>
               <div className="flex justify-end space-x-3 mt-8 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors">Cancel</button>

@@ -5,14 +5,18 @@ import {
   type User as FirebaseUser
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../config/firebase'
+import { auth, db } from '../config/firebase';
+import { initializeSocket, disconnectSocket } from '../services/socket';
 
-export type Role = 'student' | 'admin' | 'invigilator' | null;
+export type Role = 'examiner' | 'moderator' | 'controller' | null;
 
 interface AuthContextType {
   role: Role;
   user: FirebaseUser | null;
   loading: boolean;
+  identityVerified: boolean;
+  setIdentityVerified: (verified: boolean) => void;
+  getToken: (forceRefresh?: boolean) => Promise<string | null>;
   setRoleOverride: (r: Role) => void;
   logout: () => Promise<void>;
 }
@@ -23,6 +27,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<Role>(null);
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [identityVerified, setIdentityVerifiedState] = useState<boolean>(() => {
+    return sessionStorage.getItem('identity_verified') === 'true';
+  });
+
+  const setIdentityVerified = (verified: boolean) => {
+    setIdentityVerifiedState(verified);
+    if (verified) {
+      sessionStorage.setItem('identity_verified', 'true');
+    } else {
+      sessionStorage.removeItem('identity_verified');
+    }
+  };
+
+  const getToken = async (forceRefresh: boolean = false): Promise<string | null> => {
+    if (user) {
+      try {
+        return await user.getIdToken(forceRefresh);
+      } catch (err) {
+        console.error('Failed to get Firebase ID token:', err);
+      }
+    }
+    // Fallback if stored in localStorage for development/offline
+    return localStorage.getItem('auth_token') || null;
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -79,13 +107,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               localStorage.setItem('auth_role', fetchedRole);
             }
           } else {
-            setRole('student');
+            setRole('examiner');
           }
         } catch(e) {
           console.error("Firebase config is likely missing or Firestore read failed.", e);
-          // Fallback to local storage or default to student
+          // Fallback to local storage or default to examiner
           const localRole = localStorage.getItem('auth_role') as Role;
-          setRole(localRole || 'student');
+          setRole(localRole || 'examiner');
         }
       } else {
         setRole(null);
@@ -96,11 +124,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return unsubscribe;
   }, []);
 
+  // Initialize socket singleton and join role room whenever role changes
+  useEffect(() => {
+    if (role) {
+      initializeSocket(role).catch((err) => {
+        console.warn('Socket auto-initialization deferred:', err);
+      });
+    } else {
+      disconnectSocket();
+    }
+  }, [role]);
+
   const logout = async () => {
+    disconnectSocket();
     setRole(null);
+    setIdentityVerified(false);
     localStorage.removeItem('auth_role');
     localStorage.removeItem('auth_email');
     localStorage.removeItem('auth_name');
+    localStorage.removeItem('auth_token');
+    sessionStorage.removeItem('identity_verified');
     try {
       await firebaseSignOut(auth);
     } catch(e) {
@@ -114,7 +157,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ role, user, loading, logout, setRoleOverride }}>
+    <AuthContext.Provider value={{ 
+      role, 
+      user, 
+      loading, 
+      identityVerified, 
+      setIdentityVerified, 
+      getToken, 
+      logout, 
+      setRoleOverride 
+    }}>
       {!loading && children}
     </AuthContext.Provider>
   );
