@@ -1,0 +1,99 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Primary brand colors: Brown (for Light Mode) */
+    --color-primary-50: 250 248 246;
+    --color-primary-100: 242 235 228;
+    --color-primary-200: 229 215 203;
+    --color-primary-300: 209 186 168;
+    --color-primary-400: 180 148 124;
+    --color-primary-500: 142 111 87;
+    --color-primary-600: 116 88 67;
+    --color-primary-700: 94 70 53;
+    --color-primary-800: 73 54 41;
+    --color-primary-900: 58 43 32;
+    --color-primary-950: 37 27 20;
+
+    /* Neutrals: Rich Black and Dark tones (for Light Mode) */
+    --color-slate-50: 250 250 250;     /* light border/bg overlap */
+    --color-slate-100: 229 229 229;   /* lines / inner dividers */
+    --color-slate-200: 212 212 212;   /* borders / outlines */
+    --color-slate-300: 163 163 163;   /* placeholders */
+    --color-slate-400: 115 115 115;   /* secondary text */
+    --color-slate-500: 82 82 82;       /* body grey text */
+    --color-slate-600: 38 38 38;       /* strong dark text */
+    --color-slate-700: 20 20 20;       /* headings */
+    --color-slate-800: 10 10 10;       /* body text */
+    --color-slate-900: 0 0 0;          /* solid black text / background */
+    --color-slate-950: 0 0 0;          /* solid black text / background */
+
+    --color-surface-light: 255 255 255;
+    --color-surface-dark: 23 23 23;
+    --color-background-light: 255 255 255;
+    --color-background-dark: 10 10 10;
+  }
+
+  .dark {
+    /* Primary brand colors: Firozi/Cyan (for Dark Mode) */
+    --color-primary-50: 236 254 255;
+    --color-primary-100: 207 250 254;
+    --color-primary-200: 165 243 252;
+    --color-primary-300: 103 232 249;
+    --color-primary-400: 34 211 238;
+    --color-primary-500: 6 182 212;
+    --color-primary-600: 8 145 178;
+    --color-primary-700: 14 116 144;
+    --color-primary-800: 21 94 117;
+    --color-primary-900: 22 78 99;
+    --color-primary-950: 8 51 68;
+
+    /* Neutrals: Cool Matte Grey / Charcoal (for Dark Mode) */
+    --color-slate-50: 250 250 249;
+    --color-slate-100: 242 242 242;
+    --color-slate-200: 229 229 229;
+    --color-slate-300: 212 212 212;
+    --color-slate-400: 163 163 163;
+    --color-slate-500: 115 115 115;
+    --color-slate-600: 82 82 82;       /* grey */
+    --color-slate-700: 64 64 64;       /* grey */
+    --color-slate-800: 51 51 51;       /* grey */
+    --color-slate-900: 38 38 38;       /* solid grey cards */
+    --color-slate-950: 28 28 28;       /* grey background */
+
+    --color-surface-light: 255 255 255;
+    --color-surface-dark: 38 38 38;    /* grey card bg */
+    --color-background-light: 255 255 255;
+    --color-background-dark: 28 28 28;  /* grey screen bg */
+  }
+
+  body {
+    @apply antialiased text-slate-800 bg-slate-50 dark:text-slate-200 dark:bg-slate-950 font-sans transition-colors duration-300 selection:bg-primary-500/30;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm rounded-xl;
+  }
+  
+  .btn-primary {
+    @apply px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-all duration-200 font-medium shadow-sm active:scale-[0.98] focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-950 flex items-center justify-center;
+  }
+
+  .btn-secondary {
+    @apply px-5 py-2.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-lg transition-all duration-200 font-medium active:scale-[0.98] border border-slate-200 dark:border-slate-700 shadow-sm focus:ring-2 focus:ring-slate-200 dark:focus:ring-slate-700 focus:ring-offset-2 dark:focus:ring-offset-slate-950 flex items-center justify-center;
+  }
+
+  .nav-link {
+    @apply text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 font-medium transition-colors duration-200 rounded-md px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800/50;
+  }
+  
+  .input-field {
+    @apply w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-4 py-2.5 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-shadow duration-200 shadow-sm;
+  }
+}
