@@ -95,64 +95,63 @@ Respond ONLY with valid JSON in this exact format:
 }
 
 /**
- * Call AI API for evaluation
+ * Call Gemini API for evaluation
  * @param {string} prompt - Evaluation prompt
  * @param {Buffer} imageBuffer - Resized image buffer
  * @returns {Promise<object>} AI response
  */
 async function callAIAPI(prompt, imageBuffer) {
   const apiKey = process.env.AI_API_KEY;
-  const model = process.env.AI_MODEL || 'gpt-4o-mini';
-  
+  const model = process.env.AI_MODEL || 'gemini-1.5-flash';
+
   if (!apiKey) {
     throw new Error('AI_API_KEY not configured');
   }
-  
-  // Convert image to base64 for API
+
+  // Convert image to base64 for Gemini inline image part
   const imageBase64 = imageBuffer.toString('base64');
-  
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
   try {
-    // OpenAI-compatible API call
     const response = await axios.post(
-      'https://api.openai.com/v1/chat/completions',
+      url,
       {
-        model,
-        messages: [
+        contents: [
           {
-            role: 'user',
-            content: [
+            parts: [
+              { text: prompt },
               {
-                type: 'text',
-                text: prompt
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: `data:image/jpeg;base64,${imageBase64}`
+                inline_data: {
+                  mime_type: 'image/jpeg',
+                  data: imageBase64
                 }
               }
             ]
           }
         ],
-        max_tokens: 1000,
-        temperature: 0.3,
-        response_format: { type: 'json_object' }
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 1000
+        }
       },
       {
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         timeout: 30000 // 30 second timeout
       }
     );
-    
-    const content = response.data.choices[0].message.content;
-    return JSON.parse(content);
-    
+
+    // Gemini wraps the text in candidates[0].content.parts[0].text
+    let text = response.data.candidates[0].content.parts[0].text;
+
+    // Strip markdown code fences Gemini sometimes adds around JSON
+    text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
+    return JSON.parse(text);
+
   } catch (error) {
     if (error.response) {
-      console.error('[AI Service] API error:', error.response.status, error.response.data);
+      console.error('[AI Service] Gemini API error:', error.response.status, JSON.stringify(error.response.data));
     } else {
       console.error('[AI Service] Request failed:', error.message);
     }
