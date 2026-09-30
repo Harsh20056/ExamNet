@@ -5,6 +5,14 @@
 
 ---
 
+## 🌐 Live Prototype
+
+**➡️ [https://exam-net-tawny.vercel.app/](https://exam-net-tawny.vercel.app/)**
+
+> Experience the full evaluation system with pre-loaded demo data. No installation required!
+
+---
+
 ## 🏆 The Problem We Solve
 
 Traditional paper-based evaluation of board/university exams suffers from:
@@ -13,7 +21,7 @@ Traditional paper-based evaluation of board/university exams suffers from:
 - **Slow throughput** — evaluators must physically receive, mark, and return paper bundles
 - **Zero anomaly detection** — rubber-stamping, speed-marking, or favouritism goes undetected
 
-**SAMADHAN X** digitises this entire pipeline — from scanned sheet upload through AI-assisted evaluation, anomaly detection, moderation, and cryptographically chained audit — and packages it as a secure, deployable web platform.
+**SAMADHAN X** digitises this entire pipeline — from scanned sheet upload through AI-assisted evaluation, anomaly detection, moderation, and cryptographically chained audit — and packages it a[...]
 
 ---
 
@@ -50,8 +58,8 @@ Traditional paper-based evaluation of board/university exams suffers from:
 - **Firebase Auth** JWT verification on every API request
 - **Role-based access control** — examiners can only read/write their own assigned sheets; 403 for everything else
 - **Identity firewall** — student name/roll number never appears in any API response; only the anonymised `sheetId` is exposed
-- **Cryptographic audit chain** — every significant action (submit, override, moderation decision) is appended to an append-only `audit` collection with SHA-256 hash chaining. The seed script verifies chain integrity at startup
-- **Electron Secure Mode** — the desktop wrapper (`window.secure`) locks the system into kiosk mode (no Alt+Tab, no screenshots, no clipboard) during active marking. Violations are posted to the backend in real time
+- **Cryptographic audit chain** — every significant action (submit, override, moderation decision) is appended to an append-only `audit` collection with SHA-256 hash chaining. The seed script ve[...]
+- **Electron Secure Mode** — the desktop wrapper (`window.secure`) locks the system into kiosk mode (no Alt+Tab, no screenshots, no clipboard) during active marking. Violations are posted to the[...]
 
 ### 📡 Real-Time Socket Pipeline
 - **`sheet_updated`** — broadcast to the assigned examiner room when a sheet status changes
@@ -285,7 +293,7 @@ After running `npm run seed`, the following accounts are ready:
 | File | Purpose |
 |---|---|
 | [`backend/server.js`](Website/backend/server.js) | Express app, Socket.IO, global error handlers, morgan logging |
-| [`backend/src/seed/seed.js`](Website/backend/src/seed/seed.js) | Fully idempotent seeder — creates Auth users, resets passwords, generates sample PNGs, plants 9 anomaly test cases, verifies audit chain |
+| [`backend/src/seed/seed.js`](Website/backend/src/seed/seed.js) | Fully idempotent seeder — creates Auth users, resets passwords, generates sample PNGs, plants 9 anomaly test cases, verifies a[...] |
 | [`backend/src/services/anomalyDetector.js`](Website/backend/src/services/anomalyDetector.js) | All 7 anomaly detection rules |
 | [`backend/src/services/auditLog.js`](Website/backend/src/services/auditLog.js) | Append-only, hash-chained audit trail |
 | [`frontend/src/services/api.ts`](Website/frontend/src/services/api.ts) | Centralised API client with retry + cold-start banner |
