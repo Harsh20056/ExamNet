@@ -107,7 +107,7 @@ export const mockExam: Exam = {
   ],
 };
 
-const placeholderSvg = (page: number, label: string) => `/samples/SX-0001-p${page}.png`;
+const placeholderSvg = (page: number, _label: string) => `/samples/SX-0001-p${page}.png`;
 
 export const mockSheets: Sheet[] = [
   {
