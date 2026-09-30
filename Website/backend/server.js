@@ -3,69 +3,117 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const nodemailer = require('nodemailer');
 
+// Import new foundation modules
+const { initializeFirebaseAdmin } = require('./src/config/firebaseAdmin');
+const { corsOptions, socketCorsOptions } = require('./src/config/cors');
+const { errorHandler, notFoundHandler } = require('./src/middleware/errorHandler');
+const healthRouter = require('./src/routes/health');
+const { initializeSocket, DashboardTicker } = require('./src/sockets');
+
+// Initialize Firebase Admin (if configured)
+try {
+  initializeFirebaseAdmin();
+} catch (error) {
+  console.warn('[Server] Firebase Admin initialization skipped or failed. Auth routes will not work.');
+}
+
 const app = express();
-app.use(cors());
+
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable CSP for API server
+  crossOriginEmbedderPolicy: false
+}));
+
+// CORS configuration
+app.use(cors(corsOptions));
+
+// Rate limiting (general)
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: { error: 'Too many requests', message: 'Please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/', generalLimiter);
+
+// Body parsing
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST', 'PUT']
-  }
+
+// Initialize Socket.io with authentication
+const io = initializeSocket(server, socketCorsOptions);
+
+// Start dashboard ticker for real-time stats
+const dashboardTicker = new DashboardTicker(io, 5000); // 5 second interval
+dashboardTicker.start();
+
+// Make io available to routes via middleware
+app.use((req, res, next) => {
+  req.io = io;
+  next();
 });
 
-// In-memory mock database
-let students = [];
+// ========================================
+// NEW ROUTES (with foundation)
+// ========================================
+
+// Health check (no auth required)
+app.use('/api/health', healthRouter);
+
+// Exam management routes (with auth + role-based access)
+const examsRouter = require('./src/routes/exams');
+app.use('/api/exams', examsRouter);
+
+// Sheet management routes (with auth + role-based access)
+const sheetsRouter = require('./src/routes/sheets');
+app.use('/api/sheets', sheetsRouter);
+
+// Alert management routes (with auth + role-based access)
+const alertsRouter = require('./src/routes/alerts');
+app.use('/api/alerts', alertsRouter);
+
+// AI evaluation routes (with auth + role-based access)
+const aiRouter = require('./src/routes/ai');
+app.use('/api/ai', aiRouter);
+
+// Moderation routes (with auth + role-based access)
+const moderationRouter = require('./src/routes/moderation');
+app.use('/api/moderation', moderationRouter);
+
+// Identity verification routes (with auth + role-based access)
+const identityRouter = require('./src/routes/identity');
+app.use('/api/identity', identityRouter);
+
+// Analytics routes (with auth + role-based access)
+const analyticsRouter = require('./src/routes/analytics');
+app.use('/api/analytics', analyticsRouter);
+
+// Audit log routes (with auth + role-based access)
+const auditRouter = require('./src/routes/audit');
+app.use('/api/audit', auditRouter);
+
+// Assignment routes (with auth + role-based access)
+const assignmentRouter = require('./src/routes/assignment');
+app.use('/api/sheets', assignmentRouter);
+
+// Export routes (with auth + role-based access)
+const exportRouter = require('./src/routes/export');
+app.use('/api/export', exportRouter);
+
+// ========================================
+// EXISTING ROUTES (unchanged for now)
+// ========================================
+
+// In-memory active center store
 let activeCenterId = 1;
-let nextId = 1;
-
-// Intent Status Calculation Helper
-function calculateCompletionSignal(testSession) {
-  const isLocked = !!testSession.isLocked;
-  const prerequisitesMissing = !!testSession.prerequisitesMissing;
-  const isDraft = !!testSession.isDraft;
-  const pendingManualReview = !!testSession.pendingManualReview;
-  const attemptedQuestions = testSession.attemptedQuestions || 0;
-  const totalQuestions = testSession.totalQuestions || 5;
-
-  if (isLocked || prerequisitesMissing) {
-    return {
-      status: 'Blocked',
-      reason: isLocked ? 'Session is locked by AI Proctoring or security settings.' : 'Prerequisites missing (Face registration required).',
-      updatedAt: new Date().toISOString(),
-      metadata: { attemptedQuestions, totalQuestions, isLocked, isDraft }
-    };
-  } else if (isDraft || pendingManualReview) {
-    return {
-      status: 'Unresolved',
-      reason: isDraft ? 'Attempt is currently saved as draft.' : 'Attempt is pending manual review.',
-      updatedAt: new Date().toISOString(),
-      metadata: { attemptedQuestions, totalQuestions, isLocked, isDraft }
-    };
-  } else if (attemptedQuestions < totalQuestions) {
-    return {
-      status: 'Partial',
-      reason: `Attempted ${attemptedQuestions}/${totalQuestions} questions.`,
-      updatedAt: new Date().toISOString(),
-      metadata: { attemptedQuestions, totalQuestions, isLocked, isDraft }
-    };
-  } else {
-    return {
-      status: 'Complete',
-      reason: 'All questions attempted and submitted.',
-      updatedAt: new Date().toISOString(),
-      metadata: { attemptedQuestions, totalQuestions, isLocked, isDraft }
-    };
-  }
-}
-
-// In-memory active exam paper store & broadcast delivery receipts
-let activeExamPaper = null;
-let broadcastReceipts = new Map();
 
 // In-memory OTP store (email -> { otp, expires })
 const otps = new Map();
@@ -176,353 +224,18 @@ app.post('/api/active-center', (req, res) => {
   res.json({ success: true, activeCenterId });
 });
 
-app.get('/api/students', (req, res) => {
-  res.json(students);
-});
+// ========================================
+// ERROR HANDLERS (must be last)
+// ========================================
+app.use(notFoundHandler);
+app.use(errorHandler);
 
-app.post('/api/students', (req, res) => {
-  const { name, roll, seat } = req.body;
-  if (!name || !roll || !seat) {
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
-
-  const totalQuestions = activeExamPaper && activeExamPaper.questions ? activeExamPaper.questions.length : 5;
-  const newStudent = {
-    id: nextId++,
-    name,
-    roll,
-    seat,
-    centerId: activeCenterId,
-    status: 'pending',
-    match: Math.floor(Math.random() * 20) + 80, // Random match between 80-100 for mock purposes
-    intent: 'UNRESOLVED',
-    intentStatus: calculateCompletionSignal({
-      attemptedQuestions: 0,
-      totalQuestions,
-      isLocked: true,
-      isDraft: false,
-      prerequisitesMissing: true,
-      pendingManualReview: false
-    })
-  };
-
-  students.push(newStudent);
-  
-  // Emit to all connected clients
-  io.emit('student_added', newStudent);
-  
-  res.status(201).json(newStudent);
-});
-
-app.put('/api/students/:id/status', (req, res) => {
-  const id = parseInt(req.params.id);
-  const { status } = req.body;
-  
-  const student = students.find(s => s.id === id);
-  if (!student) {
-    return res.status(404).json({ error: 'Student not found' });
-  }
-
-  student.status = status;
-  
-  const totalQuestions = activeExamPaper && activeExamPaper.questions ? activeExamPaper.questions.length : 5;
-  const attemptedQuestions = student.answers ? 
-    (Array.isArray(student.answers) ? student.answers.filter(Boolean).length : Object.keys(student.answers).length) : 0;
-
-  student.intentStatus = calculateCompletionSignal({
-    attemptedQuestions,
-    totalQuestions,
-    isLocked: student.status === 'pending' || !student.referenceDescriptor,
-    isDraft: student.status !== 'submitted',
-    prerequisitesMissing: !student.referenceDescriptor,
-    pendingManualReview: student.status === 'flagged'
-  });
-  
-  // Keep intent property in sync
-  student.intent = student.intentStatus.status.toUpperCase();
-
-  // Emit update
-  io.emit('student_updated', student);
-  
-  res.json(student);
-});
-
-app.put('/api/students/:id', (req, res) => {
-  const id = parseInt(req.params.id);
-  const studentIndex = students.findIndex(s => s.id === id);
-  if (studentIndex === -1) {
-    return res.status(404).json({ error: 'Student not found' });
-  }
-
-  students[studentIndex] = { ...students[studentIndex], ...req.body };
-  const student = students[studentIndex];
-
-  const totalQuestions = req.body.totalQuestions !== undefined ? req.body.totalQuestions : (
-    activeExamPaper && activeExamPaper.questions ? activeExamPaper.questions.length : 5
-  );
-  const attemptedQuestions = req.body.attemptedQuestions !== undefined ? req.body.attemptedQuestions : (
-    student.answers ? (Array.isArray(student.answers) ? student.answers.filter(Boolean).length : Object.keys(student.answers).length) : 0
-  );
-  
-  const isLocked = req.body.isLocked !== undefined ? req.body.isLocked : (student.status === 'pending' || !student.referenceDescriptor);
-  const isDraft = req.body.isDraft !== undefined ? req.body.isDraft : (student.status !== 'submitted');
-
-  student.intentStatus = calculateCompletionSignal({
-    attemptedQuestions,
-    totalQuestions,
-    isLocked,
-    isDraft,
-    prerequisitesMissing: !student.referenceDescriptor,
-    pendingManualReview: student.status === 'flagged'
-  });
-
-  student.intent = student.intentStatus.status.toUpperCase();
-  
-  io.emit('student_updated', student);
-  res.json(student);
-});
-
-app.put('/api/students/roll/:roll', (req, res) => {
-  const roll = req.params.roll;
-  const studentIndex = students.findIndex(s => s.roll.toLowerCase() === roll.toLowerCase());
-  if (studentIndex === -1) {
-    return res.status(404).json({ error: 'Student not found' });
-  }
-
-  students[studentIndex] = { ...students[studentIndex], ...req.body };
-  const student = students[studentIndex];
-
-  const totalQuestions = req.body.totalQuestions !== undefined ? req.body.totalQuestions : (
-    activeExamPaper && activeExamPaper.questions ? activeExamPaper.questions.length : 5
-  );
-  const attemptedQuestions = req.body.attemptedQuestions !== undefined ? req.body.attemptedQuestions : (
-    student.answers ? (Array.isArray(student.answers) ? student.answers.filter(Boolean).length : Object.keys(student.answers).length) : 0
-  );
-  
-  const isLocked = req.body.isLocked !== undefined ? req.body.isLocked : (student.status === 'pending' || !student.referenceDescriptor);
-  const isDraft = req.body.isDraft !== undefined ? req.body.isDraft : (student.status !== 'submitted');
-
-  student.intentStatus = calculateCompletionSignal({
-    attemptedQuestions,
-    totalQuestions,
-    isLocked,
-    isDraft,
-    prerequisitesMissing: !student.referenceDescriptor,
-    pendingManualReview: student.status === 'flagged'
-  });
-
-  student.intent = student.intentStatus.status.toUpperCase();
-
-  io.emit('student_updated', student);
-  res.json(student);
-});
-
-app.delete('/api/students/:id', (req, res) => {
-  const id = parseInt(req.params.id);
-  const index = students.findIndex(s => s.id === id);
-  if (index === -1) {
-    return res.status(404).json({ error: 'Student not found' });
-  }
-  const deletedStudent = students.splice(index, 1)[0];
-  io.emit('student_deleted', deletedStudent);
-  res.json({ success: true, deletedStudent });
-});
-
-app.post('/api/cheat', (req, res) => {
-  const { name, message } = req.body;
-  
-  // Find roll number assigned by invigilator based on the name (case-insensitive)
-  const student = students.find(s => s.name.toLowerCase() === (name || '').toLowerCase());
-  const roll = student ? student.roll : 'Unassigned';
-
-  console.log(`Cheating attempt by ${name || 'Unknown'} (${roll}): ${message}`);
-  
-  const alertData = {
-    id: Date.now(),
-    roll: roll,
-    name: name || 'Unknown Student',
-    message: message || 'Cheating detected',
-    timestamp: new Date().toISOString()
-  };
-  
-  io.emit('cheating_attempt', alertData);
-  res.json({ success: true });
-});
-
-// Exam Paper Broadcast Endpoints
-app.get('/api/active-exam-paper', (req, res) => {
-  if (activeExamPaper && activeExamPaper.startTime) {
-    const elapsed = Math.floor((Date.now() - activeExamPaper.startTime) / 1000);
-    const duration = activeExamPaper.durationSeconds || 10800; // 3 hours
-    const remainingSeconds = Math.max(0, duration - elapsed);
-    return res.json({ ...activeExamPaper, remainingSeconds });
-  }
-  res.json(null);
-});
-
-app.get('/api/broadcast-stats', (req, res) => {
-  const deliveredList = Array.from(broadcastReceipts.values());
-  res.json({
-    deliveredCount: deliveredList.length,
-    deliveredStudents: deliveredList
-  });
-});
-
-app.post('/api/publish-exam-paper', (req, res) => {
-  const { title, subject, pdfDataUrl, questions, durationSeconds, answerKey } = req.body;
-  if (!title || !pdfDataUrl) {
-    return res.status(400).json({ error: 'Title and PDF document are required' });
-  }
-
-  broadcastReceipts.clear();
-
-  const duration = durationSeconds || 10800; // 3 hours (10,800 seconds)
-  activeExamPaper = {
-    id: Date.now(),
-    title: title || 'Advanced Examination Paper',
-    subject: subject || 'General Examination',
-    pdfDataUrl,
-    questions: questions || [],
-    answerKey: answerKey || [], // Array of strings e.g. ['A', 'B', 'C']
-    startTime: Date.now(),
-    durationSeconds: duration
-  };
-
-  const remainingSeconds = duration;
-  const broadcastData = { ...activeExamPaper, remainingSeconds };
-
-  console.log(`[EXAM BROADCAST] Published paper "${title}" with 3-hour timer.`);
-  io.emit('exam_paper_published', broadcastData);
-  io.emit('broadcast_stats_updated', { deliveredCount: 0, deliveredStudents: [] });
-
-  res.json({ success: true, activeExamPaper: broadcastData });
-});
-
-app.post('/api/reset-exam-paper', (req, res) => {
-  activeExamPaper = null;
-  broadcastReceipts.clear();
-  io.emit('exam_paper_reset');
-  io.emit('broadcast_stats_updated', { deliveredCount: 0, deliveredStudents: [] });
-  console.log(`[EXAM BROADCAST] Exam paper reset.`);
-  res.json({ success: true });
-});
-
-app.post('/api/submit-exam', (req, res) => {
-  const { roll, answers } = req.body;
-  if (!roll) {
-    return res.status(400).json({ error: 'Roll number is required' });
-  }
-
-  const student = students.find(s => s.roll.toLowerCase() === roll.toLowerCase());
-  if (!student) {
-    return res.status(404).json({ error: 'Student not found' });
-  }
-
-  let score = 0;
-  const maxScore = activeExamPaper && activeExamPaper.answerKey ? activeExamPaper.answerKey.length : 0;
-  
-  if (activeExamPaper && activeExamPaper.answerKey && activeExamPaper.answerKey.length > 0 && answers) {
-    for (let i = 0; i < maxScore; i++) {
-      if (answers[i] === activeExamPaper.answerKey[i]) {
-        score++;
-      }
-    }
-  }
-
-  student.status = 'submitted';
-  student.score = score;
-  student.maxScore = maxScore;
-  student.answers = answers;
-  student.intent = 'COMPLETE';
-
-  // Calculate and attach intentStatus
-  const totalQuestions = maxScore || (activeExamPaper && activeExamPaper.questions ? activeExamPaper.questions.length : 5);
-  const attemptedQuestions = answers ? answers.filter(Boolean).length : totalQuestions;
-
-  student.intentStatus = calculateCompletionSignal({
-    attemptedQuestions,
-    totalQuestions,
-    isLocked: false,
-    isDraft: false,
-    prerequisitesMissing: false,
-    pendingManualReview: false
-  });
-
-  console.log(`[EXAM SUBMITTED] ${student.name} (${roll}) Score: ${score}/${maxScore}`);
-  io.emit('student_updated', student);
-  
-  res.json({ success: true, score, maxScore });
-});
-
-// Socket.io connection handling
-io.on('connection', (socket) => {
-  console.log('A client connected:', socket.id);
-  
-  if (activeExamPaper && activeExamPaper.startTime) {
-    const elapsed = Math.floor((Date.now() - activeExamPaper.startTime) / 1000);
-    const remainingSeconds = Math.max(0, (activeExamPaper.durationSeconds || 10800) - elapsed);
-    socket.emit('exam_paper_published', { ...activeExamPaper, remainingSeconds });
-  }
-
-  // Send current broadcast stats upon connection
-  const initialDelivered = Array.from(broadcastReceipts.values());
-  socket.emit('broadcast_stats_updated', { deliveredCount: initialDelivered.length, deliveredStudents: initialDelivered });
-
-  // Handle PDF received acknowledgment from students
-  socket.on('paper_received_ack', (data) => {
-    if (!data || !data.roll) return;
-    const studentKey = (data.roll || socket.id).toString().toLowerCase();
-    const record = {
-      socketId: socket.id,
-      roll: data.roll,
-      name: data.name || 'Student',
-      time: new Date().toLocaleTimeString()
-    };
-    broadcastReceipts.set(studentKey, record);
-    const updatedList = Array.from(broadcastReceipts.values());
-    console.log(`[PDF ACK] PDF delivered to ${record.name} (${record.roll}). Total delivered: ${updatedList.length}`);
-    io.emit('broadcast_stats_updated', { deliveredCount: updatedList.length, deliveredStudents: updatedList });
-  });
-
-  // Handle student intent updates (Round 2 Feature)
-  socket.on('student_intent_update', (data) => {
-    if (!data || !data.roll) return;
-    console.log(`[INTENT] ${data.name} (${data.roll}) updated status to: ${data.intent}`);
-    
-    // Update student intent in the local in-memory DB and compute intentStatus
-    const student = students.find(s => s.roll.toLowerCase() === data.roll.toLowerCase());
-    if (student) {
-      student.intent = data.intent;
-      
-      const totalQuestions = activeExamPaper && activeExamPaper.questions ? activeExamPaper.questions.length : 5;
-      const attemptedQuestions = student.answers ? 
-        (Array.isArray(student.answers) ? student.answers.filter(Boolean).length : Object.keys(student.answers).length) : 0;
-      
-      const manualBlocked = data.intent === 'BLOCKED';
-      const manualDraft = data.intent === 'UNRESOLVED' || data.intent === 'PARTIAL';
-      const manualComplete = data.intent === 'COMPLETE';
-
-      student.intentStatus = calculateCompletionSignal({
-        attemptedQuestions,
-        totalQuestions,
-        isLocked: manualBlocked || student.status === 'pending' || !student.referenceDescriptor,
-        isDraft: manualDraft || (student.status !== 'submitted' && !manualComplete),
-        prerequisitesMissing: !student.referenceDescriptor,
-        pendingManualReview: student.status === 'flagged'
-      });
-      
-      io.emit('student_updated', student);
-    }
-    
-    io.emit('student_intent_updated', data);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
-  });
-});
-
+// ========================================
+// Start Server
+// ========================================
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`SAMADHAN X Backend Server running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Health check: http://localhost:${PORT}/api/health`);
 });

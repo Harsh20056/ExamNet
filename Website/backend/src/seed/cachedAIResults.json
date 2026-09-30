@@ -1,0 +1,67 @@
+{
+  "comment": "Pre-generated AI evaluation results for demo sheets (USE_CACHED_AI=true)",
+  "default_q1": {
+    "suggestedMarks": 8,
+    "matched": ["Definition of OOP", "Four principles identified", "Examples provided"],
+    "missed": ["Clarity and structure"],
+    "transcription": "Object-Oriented Programming is a way to organize code using objects. The four principles are encapsulation (hiding data), abstraction (simplifying complex things), inheritance (reusing code from parent classes), and polymorphism (one interface, many forms). For example, a Car class can inherit from Vehicle class.",
+    "confidence": 0.85,
+    "reason": "Student demonstrates good understanding of OOP concepts with clear examples. Minor deduction for organization and depth of explanation."
+  },
+  "default_q2": {
+    "suggestedMarks": 12,
+    "matched": ["Correct implementation", "Time complexity explanation", "Code quality"],
+    "missed": [],
+    "transcription": "def binary_search(arr, target):\n    left, right = 0, len(arr)-1\n    while left <= right:\n        mid = (left+right)//2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            left = mid+1\n        else:\n            right = mid-1\n    return -1\nTime complexity is O(log n) because we divide the search space in half each iteration.",
+    "confidence": 0.95,
+    "reason": "Excellent implementation with correct logic and clear time complexity explanation. Well-written code with proper variable names."
+  },
+  "default_q3": {
+    "suggestedMarks": 9,
+    "matched": ["Definition of normalization", "1NF explained", "2NF explained"],
+    "missed": ["3NF explained"],
+    "transcription": "डेटाबेस नॉर्मलाइज़ेशन डेटा को व्यवस्थित करने की प्रक्रिया है जो redundancy को कम करती है। 1NF means atomic values with no repeating groups. 2NF means 1NF plus no partial dependencies on composite keys. 3NF builds on 2NF but definition is slightly incomplete.",
+    "confidence": 0.82,
+    "reason": "Good explanation of normalization and clear understanding of 1NF and 2NF. Student demonstrates conceptual understanding in bilingual format."
+  },
+  "default_q4": {
+    "suggestedMarks": 7,
+    "matched": ["All 7 layers identified", "Functions explained"],
+    "missed": ["Clarity"],
+    "transcription": "OSI model has 7 layers: Physical transmits raw bits, Data Link handles node-to-node framing, Network provides packet routing via IP, Transport ensures reliable end-to-end delivery (TCP/UDP), Session establishes and ends connections, Presentation manages syntax and encryption, Application provides interface to software applications.",
+    "confidence": 0.90,
+    "reason": "All 7 layers identified with correct functional descriptions. Concise and accurate."
+  },
+  "default_q5": {
+    "suggestedMarks": 8,
+    "matched": ["TCP characteristics", "UDP characteristics", "Use cases"],
+    "missed": ["Comparison clarity"],
+    "transcription": "TCP is reliable, connection-oriented, and provides ordered data transmission with flow and error control. UDP is connectionless, fast, but does not guarantee packet delivery. TCP is used for HTTP/HTTPS, SSH, email, and database connections. UDP is ideal for VoIP, video conferencing, and online games where low latency is critical.",
+    "confidence": 0.92,
+    "reason": "Clear distinction and practical real-world use cases given for both protocols."
+  },
+  "default_q6": {
+    "suggestedMarks": 13,
+    "matched": ["Stack explanation", "Queue explanation", "Real-life examples", "Language proficiency"],
+    "missed": [],
+    "transcription": "Stack follows LIFO (Last In First Out) principle like a stack of plates - the last plate placed is the first one removed. Queue follows FIFO (First In First Out) like a queue of people at a ticket counter. Stack examples: browser back button, undo/redo in code editors. Queue examples: printer spooler, OS job scheduler. स्टैक में सबसे ऊपर का आइटम पहले निकलता है जबकि क्यू में सबसे पहला आइटम पहले निकलता है।",
+    "confidence": 0.94,
+    "reason": "Comprehensive explanation with accurate real-world examples and bilingual proficiency."
+  },
+  "default_q7": {
+    "suggestedMarks": 10,
+    "matched": ["JOIN concept explained", "INNER JOIN", "LEFT JOIN", "RIGHT JOIN"],
+    "missed": [],
+    "transcription": "SQL JOIN combines rows from two or more tables based on a related column between them. INNER JOIN returns only records that match in both tables. LEFT JOIN returns all records from left table and matched from right. RIGHT JOIN returns all from right table and matched from left. Example: SELECT employees.name, departments.name FROM employees INNER JOIN departments ON employees.dept_id = departments.id",
+    "confidence": 0.91,
+    "reason": "Detailed description of all join types with a complete SQL syntax example."
+  },
+  "default_q8": {
+    "suggestedMarks": 15,
+    "matched": ["Books table design", "Members table design", "Transactions table design", "SQL syntax correctness"],
+    "missed": ["Normalization"],
+    "transcription": "CREATE TABLE books (book_id INT PRIMARY KEY, title VARCHAR(200) NOT NULL, author VARCHAR(100), isbn VARCHAR(20) UNIQUE, available BOOLEAN DEFAULT TRUE);\nCREATE TABLE members (member_id INT PRIMARY KEY, name VARCHAR(100) NOT NULL, email VARCHAR(100) UNIQUE, phone VARCHAR(20), join_date DATE);\nCREATE TABLE transactions (transaction_id INT PRIMARY KEY AUTO_INCREMENT, book_id INT, member_id INT, issue_date DATE NOT NULL, return_date DATE, FOREIGN KEY (book_id) REFERENCES books(book_id), FOREIGN KEY (member_id) REFERENCES members(member_id));",
+    "confidence": 0.88,
+    "reason": "Clean relational schema with foreign key references and data types properly specified."
+  }
+}
