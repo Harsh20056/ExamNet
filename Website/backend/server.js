@@ -1,4 +1,5 @@
 require('dotenv').config();
+const { env } = require('./src/config/env');
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -7,21 +8,40 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const nodemailer = require('nodemailer');
 
-// Import new foundation modules
+// Import foundation modules
 const { initializeFirebaseAdmin } = require('./src/config/firebaseAdmin');
 const { corsOptions, socketCorsOptions } = require('./src/config/cors');
 const { errorHandler, notFoundHandler } = require('./src/middleware/errorHandler');
 const healthRouter = require('./src/routes/health');
 const { initializeSocket, DashboardTicker } = require('./src/sockets');
 
-// Initialize Firebase Admin (if configured)
+// Initialize Firebase Admin (throws clear error if neither JSON nor file present)
 try {
   initializeFirebaseAdmin();
 } catch (error) {
-  console.warn('[Server] Firebase Admin initialization skipped or failed. Auth routes will not work.');
+  console.warn('[Server] Firebase Admin initialization skipped or failed:', error.message);
 }
 
 const app = express();
+
+// Required behind Render / reverse proxies for rate limiting & client IP
+app.set('trust proxy', 1);
+
+// Request logging middleware (excluding Authorization headers, query secrets, and AI keys)
+app.use((req, res, next) => {
+  const start = Date.now();
+  const { method, originalUrl, ip } = req;
+  
+  // Intercept response finish to log status code and response time
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    const status = res.statusCode;
+    // Log cleanly: Method, URL, Status, Duration, Client IP (NO Auth headers, NO secrets)
+    console.log(`[HTTP] ${method} ${originalUrl} ${status} - ${duration}ms [${ip}]`);
+  });
+
+  next();
+});
 
 // Security middleware
 app.use(helmet({
@@ -29,7 +49,7 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false
 }));
 
-// CORS configuration
+// CORS configuration (uses exact same CORS_ORIGIN list as Socket.io)
 app.use(cors(corsOptions));
 
 // Rate limiting (general)
@@ -107,6 +127,27 @@ app.use('/api/sheets', assignmentRouter);
 // Export routes (with auth + role-based access)
 const exportRouter = require('./src/routes/export');
 app.use('/api/export', exportRouter);
+
+// Telemetry & live stats routes
+const statsRouter = express.Router();
+const authenticateMiddleware = require('./src/middleware/auth');
+const { asyncHandler } = require('./src/middleware/errorHandler');
+const { success: successResponse } = require('./src/utils/responses');
+statsRouter.get('/live', authenticateMiddleware, asyncHandler(async (req, res) => {
+  const analyticsService = require('./src/services/analytics');
+  const progress = await analyticsService.getProgressStats();
+  successResponse(res, {
+    total: progress.total || 0,
+    pending: progress.uploaded || 0,
+    inProgress: progress.inProgress || 0,
+    evaluated: progress.evaluated || 0,
+    flagged: progress.flagged || 0,
+    final: progress.final || 0,
+    velocityPerHour: progress.velocityPerHour || 0,
+    timestamp: new Date().toISOString()
+  });
+}));
+app.use('/api/stats', statsRouter);
 
 // ========================================
 // EXISTING ROUTES (unchanged for now)
@@ -229,6 +270,36 @@ app.post('/api/active-center', (req, res) => {
 // ========================================
 app.use(notFoundHandler);
 app.use(errorHandler);
+
+// ========================================
+// Process Level Error & Lifecycle Handlers
+// ========================================
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] Uncaught Exception:', err.message, err.stack);
+  // In production, keep running or exit gracefully after cleanup
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[WARN] Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+// Graceful shutdown on SIGTERM / SIGINT (Render deploys and restart)
+const gracefulShutdown = (signal) => {
+  console.log(`[Server] Received ${signal}. Closing HTTP and Socket connections gracefully...`);
+  dashboardTicker.stop();
+  server.close(() => {
+    console.log('[Server] HTTP and Socket server closed.');
+    process.exit(0);
+  });
+  // Force exit after 10s if connections refuse to terminate
+  setTimeout(() => {
+    console.error('[Server] Force shutdown timeout.');
+    process.exit(1);
+  }, 10000);
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // ========================================
 // Start Server

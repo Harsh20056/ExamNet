@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
-// @ts-ignore
+// @ts-expect-error tesseract types
 import Tesseract from 'tesseract.js';
 import { jsPDF } from 'jspdf';
 import { FileText, Image as ImageIcon, Loader2, Download, Radio } from 'lucide-react';
+import { BACKEND_URL } from '../config/env';
 
 export default function ExamQuestionOCR() {
   const [image, setImage] = useState<string | null>(null);
@@ -11,7 +12,6 @@ export default function ExamQuestionOCR() {
   const [broadcasting, setBroadcasting] = useState(false);
   const [progress, setProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || (window.location.hostname === 'localhost' ? 'http://127.0.0.1:5000' : `https://zup-exam-backend-42.loca.lt`);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

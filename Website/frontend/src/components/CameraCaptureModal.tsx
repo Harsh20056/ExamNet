@@ -22,7 +22,7 @@ export default function CameraCaptureModal({ onClose, onCapture, examinerName, c
   useEffect(() => {
     const loadModels = async () => {
       try {
-        const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
+        const MODEL_URL = '/models';
         await Promise.all([
           faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
           faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),

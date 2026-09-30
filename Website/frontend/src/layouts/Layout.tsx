@@ -1,9 +1,10 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Moon, Sun, LogOut, LogIn } from 'lucide-react';
+import { Moon, Sun, LogOut, LogIn, ShieldCheck } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { AlertBell } from '../components/common/AlertBell';
+import { ServerWakeBanner } from '../components/common/ServerWakeBanner';
 import logo from '../assets/logo.jpg';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -86,6 +87,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               {/* AlertBell with live count badge from useAlerts */}
               {role && <AlertBell className="mr-1" />}
 
+              {/* Secure Browser Badge when window.secure exists */}
+              {typeof window !== 'undefined' && Boolean((window as unknown as { secure?: unknown }).secure) && (
+                <div 
+                  className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide bg-red-100 dark:bg-red-950/70 text-red-700 dark:text-red-300 border border-red-300 dark:border-red-800 shadow-sm"
+                  title="Electron Kiosk & Secure Evaluation Environment Active"
+                >
+                  <ShieldCheck size={13} className="text-red-600 dark:text-red-400" />
+                  <span>Secure mode ON</span>
+                </div>
+              )}
+
               {/* Theme toggle */}
               <button
                 onClick={toggleTheme}
@@ -112,6 +124,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </nav>
+      <ServerWakeBanner />
 
       <main className="flex-grow pt-8 pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
         {children}

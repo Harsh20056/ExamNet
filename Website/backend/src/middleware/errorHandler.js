@@ -4,22 +4,26 @@
  */
 
 function errorHandler(err, req, res, next) {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const status = err.status || err.statusCode || 500;
+  const message = err.message || 'Internal server error';
+  const code = err.code || err.name || 'INTERNAL_ERROR';
+
   console.error('[Error Handler]', {
-    error: err.message,
+    error: message,
+    code: code,
+    status: status,
     stack: err.stack,
     path: req.path,
     method: req.method,
     timestamp: new Date().toISOString()
   });
 
-  // Default error response
-  const status = err.status || err.statusCode || 500;
-  const message = err.message || 'Internal server error';
-
+  // Always return clean JSON with error and code. Never expose stack traces in production.
   res.status(status).json({
-    error: err.name || 'Error',
-    message: message,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    error: message,
+    code: code,
+    ...(!isProduction && { stack: err.stack })
   });
 }
 

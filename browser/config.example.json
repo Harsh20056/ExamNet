@@ -1,0 +1,6 @@
+{
+  "APP_URL": "https://samadhan-exam.vercel.app/examiner",
+  "BACKEND_URL": "https://samadhan-backend.onrender.com",
+  "PRODUCT_NAME": "SAMADHAN Secure Marking Browser",
+  "APP_ID": "com.samadhan.securemarking"
+}

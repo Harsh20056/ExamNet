@@ -315,4 +315,13 @@ router.post('/:sheetId',
   })
 );
 
+router.post('/:sheetId/action',
+  authenticate,
+  requireRole(['moderator', 'controller']),
+  asyncHandler(async (req, res, next) => {
+    req.url = `/${req.params.sheetId}`;
+    router.handle(req, res, next);
+  })
+);
+
 module.exports = router;

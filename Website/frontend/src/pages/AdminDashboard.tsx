@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { io } from 'socket.io-client';
 import IntentStatusBadge from '../components/IntentStatusBadge';
+import { BACKEND_URL } from '../config/env';
 
 interface Student {
   id: number;
@@ -131,7 +132,6 @@ export default function AdminDashboard() {
   const [activeCenterId, setActiveCenterId] = useState<number>(1);
   
   const terminalEndRef = useRef<HTMLDivElement>(null);
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || (window.location.hostname === 'localhost' ? 'http://127.0.0.1:5000' : `https://zup-exam-backend-42.loca.lt`);
 
   const addLog = (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
     const newEntry: LogEntry = {

@@ -51,7 +51,10 @@ const aiRateLimiter = rateLimit({
   max: 30, // 30 requests per window per user
   keyGenerator: (req) => {
     // Use user UID as key for per-user limiting
-    return req.user ? req.user.uid : req.ip;
+    return req.user ? req.user.uid : (req.ip || 'anonymous');
+  },
+  validate: {
+    keyGeneratorIpFallback: false
   },
   message: {
     error: 'Too many AI evaluation requests',

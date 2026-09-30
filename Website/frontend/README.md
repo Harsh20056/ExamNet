@@ -1,73 +1,28 @@
-# React + TypeScript + Vite
+# SAMADHAN X Frontend
+AI-assisted on-screen evaluation and proctoring interface built with Vite, React 19, TypeScript, TailwindCSS, and Lucide React.
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Deploy on Vercel
 
-Currently, two official plugins are available:
+1. Import the repository in [Vercel](https://vercel.com).
+2. Set **Root Directory** to `Website/frontend`.
+3. Framework Preset will auto-detect as **Vite**.
+4. Build command: `npm run build`
+5. Output directory: `dist`
+6. Add the following Environment Variables in the Vercel project settings:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+| Variable | Description |
+|---|---|
+| `VITE_BACKEND_URL` | Base URL of deployed Render backend (e.g. `https://samadhan-backend.onrender.com`) |
+| `VITE_USE_MOCK` | Set to `false` for live production Firebase & backend connectivity |
+| `VITE_FIREBASE_API_KEY` | Firebase Web API Key |
+| `VITE_FIREBASE_AUTH_DOMAIN` | Firebase Authentication Domain (`samadhanexam.firebaseapp.com`) |
+| `VITE_FIREBASE_PROJECT_ID` | Firebase Project ID (`samadhanexam`) |
+| `VITE_FIREBASE_STORAGE_BUCKET` | Firebase Storage Bucket (`samadhanexam.firebasestorage.app`) |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | Firebase Cloud Messaging Sender ID |
+| `VITE_FIREBASE_APP_ID` | Firebase Web App ID |
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+### Features configured for Vercel:
+- **SPA Deep Linking**: `vercel.json` rewrites all non-file routes to `/index.html` so direct navigation (e.g. `/examiner/mark/SX-0001`) works smoothly.
+- **Asset Caching**: Long-term immutable caching (`Cache-Control: public, max-age=31536000, immutable`) for all `/assets/*` chunks.
+- **face-api.js Models**: Loaded statically from `/models` directory in `public/models`.
+- **Backend Cold Start Resilience**: Automatic 3-stage exponential backoff retry and friendly notification banner when Render free-tier instance wakes up.

@@ -1,9 +1,11 @@
-import { useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { mockSheets, mockExam } from '../../mock/data';
 import type { Sheet } from '../../types';
 import { StatCard, StatusBadge, DataTable, type Column } from '../../components/common';
+import { SheetsApi } from '../../services/api';
+import { getSocket } from '../../services/socket';
 import { 
   FileCheck2, 
   Clock, 
@@ -28,18 +30,59 @@ interface AssignedSheetRow {
 export default function ExaminerHome() {
   const navigate = useNavigate();
   const { identityVerified, user } = useAuth();
+  const [mineSheets, setMineSheets] = useState<Sheet[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Dynamic sheets for the current examiner (fallback to mock set)
+  const fetchMySheets = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await SheetsApi.getMine();
+      if (Array.isArray(data) && data.length > 0) {
+        setMineSheets(data);
+      } else {
+        setMineSheets(mockSheets);
+      }
+    } catch {
+      setMineSheets(mockSheets);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchMySheets();
+
+    const socket = getSocket();
+    if (socket) {
+      const handleSheetEvent = (updated: any) => {
+        setMineSheets((prev) =>
+          prev.map((s) => (s.id === (updated.sheetId || updated.id) ? { ...s, ...updated } : s))
+        );
+      };
+      const handleSheetAssigned = (newSheet: any) => {
+        setMineSheets((prev) => [newSheet, ...prev]);
+      };
+
+      socket.on('sheet_updated', handleSheetEvent);
+      socket.on('sheet_assigned', handleSheetAssigned);
+
+      return () => {
+        socket.off('sheet_updated', handleSheetEvent);
+        socket.off('sheet_assigned', handleSheetAssigned);
+      };
+    }
+  }, [fetchMySheets]);
+
+  // Dynamic sheets for the current examiner
   const assignedRows: AssignedSheetRow[] = useMemo(() => {
-    // Map existing mockSheets into examiner row data
-    return mockSheets.map((sheet, index) => {
-      // Offset due dates slightly for realism
+    const list = mineSheets.length > 0 ? mineSheets : mockSheets;
+    return list.map((sheet, index) => {
       const sheetDue = new Date(Date.now() + (index + 1) * 24 * 3600 * 1000);
       return {
         id: sheet.id,
-        sheetId: sheet.id,
+        sheetId: sheet.sheetId || sheet.id,
         subject: mockExam.title,
-        candidateCode: sheet.candidateAnonymizedId,
+        candidateCode: sheet.candidateAnonymizedId || sheet.sheetId || sheet.id,
         status: sheet.status,
         dueDate: sheetDue.toLocaleDateString('en-GB', {
           day: 'numeric',
@@ -49,7 +92,7 @@ export default function ExaminerHome() {
         rawSheet: sheet,
       };
     });
-  }, []);
+  }, [mineSheets]);
 
   // Compute stat card metrics
   const stats = useMemo(() => {
@@ -244,6 +287,7 @@ export default function ExaminerHome() {
         <DataTable
           columns={columns}
           data={assignedRows}
+          loading={loading}
           emptyTitle="No assigned answer sheets"
           emptyDescription="You have no pending answer sheets assigned for evaluation in this session."
         />

@@ -1,12 +1,21 @@
 const { getAdmin } = require('./firebaseAdmin');
+let firestoreInstance = null;
 
 /**
  * Get Firestore database instance
  * @returns {FirebaseFirestore.Firestore}
  */
 function getFirestore() {
-  const admin = getAdmin();
-  return admin.firestore();
+  if (!firestoreInstance) {
+    const admin = getAdmin();
+    firestoreInstance = admin.firestore();
+    try {
+      firestoreInstance.settings({ ignoreUndefinedProperties: true });
+    } catch (e) {
+      // Ignore if already initialized
+    }
+  }
+  return firestoreInstance;
 }
 
 /**

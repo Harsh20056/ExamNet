@@ -1,0 +1,163 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "sheets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "uploadedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sheets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "assignedTo", "order": "ASCENDING" },
+        { "fieldPath": "uploadedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sheets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "examId", "order": "ASCENDING" },
+        { "fieldPath": "uploadedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sheets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "completedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sheets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "assignedTo", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "completedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sheets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "examId", "order": "ASCENDING" },
+        { "fieldPath": "assignedTo", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sheets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "examId", "order": "ASCENDING" },
+        { "fieldPath": "isCalibration", "order": "ASCENDING" },
+        { "fieldPath": "assignedTo", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sheets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "examId", "order": "ASCENDING" },
+        { "fieldPath": "assignedTo", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "alerts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "detectedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "alerts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "type", "order": "ASCENDING" },
+        { "fieldPath": "detectedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "alerts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "severity", "order": "ASCENDING" },
+        { "fieldPath": "detectedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "alerts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sheetId", "order": "ASCENDING" },
+        { "fieldPath": "detectedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "marks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sheetId", "order": "ASCENDING" },
+        { "fieldPath": "qNo", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "identityVerifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sheetId", "order": "ASCENDING" },
+        { "fieldPath": "verifiedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "aiCalls",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sheetId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "aiCalls",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sheetId", "order": "ASCENDING" },
+        { "fieldPath": "qNo", "order": "ASCENDING" },
+        { "fieldPath": "imageHash", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "audit",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "actor", "order": "ASCENDING" },
+        { "fieldPath": "seq", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "audit",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "action", "order": "ASCENDING" },
+        { "fieldPath": "seq", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "audit",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sheetId", "order": "ASCENDING" },
+        { "fieldPath": "seq", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

@@ -43,17 +43,21 @@ router.post('/upload',
   requireRole(['controller']),
   upload.array('pages', 50), // Accept up to 50 page images
   asyncHandler(async (req, res) => {
-    if (!req.files || req.files.length === 0) {
-      return badRequest(res, 'No page images uploaded');
-    }
-    
     // Validate metadata
     const validation = uploadSheetMetadataSchema.safeParse(req.body);
     if (!validation.success) {
       return badRequest(res, 'Invalid metadata', validation.error.errors);
     }
     
-    const { rollNo, studentName, examId } = validation.data;
+    const { rollNo, studentName, examId, pageUrls } = validation.data;
+    
+    // Check if either files were uploaded or pageUrls provided
+    const hasFiles = req.files && req.files.length > 0;
+    const hasUrls = Array.isArray(pageUrls) && pageUrls.length > 0;
+
+    if (!hasFiles && !hasUrls) {
+      return badRequest(res, 'No page images or URLs provided');
+    }
     
     // Verify exam exists
     const exam = await examService.getExamById(examId);
@@ -61,14 +65,27 @@ router.post('/upload',
       return notFound(res, 'Exam not found');
     }
     
-    // Convert uploaded files to base64 data URLs
-    const pages = req.files.map((file, index) => ({
-      pageNumber: index + 1,
-      fileName: file.originalname,
-      mimeType: file.mimetype,
-      size: file.size,
-      dataUrl: `data:${file.mimetype};base64,${file.buffer.toString('base64')}`
-    }));
+    // Convert uploaded files to base64 data URLs or map provided URLs
+    let pages = [];
+    if (hasFiles) {
+      pages = req.files.map((file, index) => ({
+        pageNumber: index + 1,
+        fileName: file.originalname,
+        mimeType: file.mimetype,
+        size: file.size,
+        dataUrl: `data:${file.mimetype};base64,${file.buffer.toString('base64')}`,
+        url: `data:${file.mimetype};base64,${file.buffer.toString('base64')}`
+      }));
+    } else if (hasUrls) {
+      pages = pageUrls.map((url, index) => ({
+        pageNumber: index + 1,
+        fileName: `page_${index + 1}.jpg`,
+        mimeType: 'image/jpeg',
+        size: 0,
+        dataUrl: url,
+        url: url
+      }));
+    }
     
     // Create sheet with anonymized ID
     const sheet = await sheetService.createSheet({
@@ -292,7 +309,7 @@ router.put('/:id/marks/:qNo',
       return notFound(res, 'Associated exam not found');
     }
     
-    const question = exam.questions.find(q => q.qNo === qNo);
+    const question = exam.questions.find(q => q.qNo === Number(qNo) || String(q.qNo) === String(qNo));
     if (!question) {
       return notFound(res, `Question ${qNo} not found in exam`);
     }
@@ -350,6 +367,69 @@ router.put('/:id/marks/:qNo',
       markedAt: markEntry.markedAt,
       alerts: quickAlerts.length > 0 ? quickAlerts : undefined
     });
+  })
+);
+
+/**
+ * PUT /api/sheets/:id/marks
+ * Save batch marks for questions on a sheet
+ * Access: examiner (if assigned), moderator, controller
+ */
+router.put('/:id/marks',
+  authenticate,
+  requireRole(['examiner', 'moderator', 'controller']),
+  asyncHandler(async (req, res) => {
+    const { id: sheetId } = req.params;
+    const sheet = await sheetService.getSheetById(sheetId);
+    if (!sheet) return notFound(res, 'Sheet not found');
+    if (req.user.role === 'examiner' && sheet.assignedTo !== req.user.uid) {
+      return forbidden(res, 'You can only mark sheets assigned to you');
+    }
+    const exam = await examService.getExamById(sheet.examId);
+    if (!exam) return notFound(res, 'Associated exam not found');
+
+    const marksArray = Array.isArray(req.body.marks) 
+      ? req.body.marks 
+      : (Array.isArray(req.body) ? req.body : []);
+
+    for (const m of marksArray) {
+      const qNum = Number(m.qNo);
+      const qMarks = Number(m.marks);
+      if (!isNaN(qNum) && !isNaN(qMarks)) {
+        await sheetService.saveQuestionMarks(sheetId, qNum, {
+          marks: qMarks,
+          comment: m.comment || '',
+          timeSpentSec: m.timeSpentSec || 0,
+          markedBy: req.user.uid,
+          markerRole: req.user.role
+        });
+      }
+    }
+
+    const newTotal = await sheetService.recalculateTotalMarks(sheetId);
+    emitSheetUpdated(req.io, {
+      sheetId: sheet.id,
+      anonymizedId: sheet.sheetId,
+      totalMarks: newTotal,
+      assignedTo: sheet.assignedTo
+    });
+
+    success(res, {
+      sheetId: sheet.id,
+      totalMarks: newTotal,
+      maxMarks: sheet.maxMarks,
+      updatedMarksCount: marksArray.length
+    });
+  })
+);
+
+router.post('/:id/marks',
+  authenticate,
+  requireRole(['examiner', 'moderator', 'controller']),
+  asyncHandler(async (req, res, next) => {
+    // Forward to PUT handler
+    req.method = 'PUT';
+    router.handle(req, res, next);
   })
 );
 

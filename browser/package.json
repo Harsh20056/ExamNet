@@ -1,0 +1,51 @@
+{
+  "name": "samadhan-secure-marking-browser",
+  "version": "1.0.0",
+  "description": "SAMADHAN Secure Marking Browser",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "cross-env APP_URL=http://localhost:5173/examiner electron .",
+    "prod": "cross-env APP_URL=https://samadhan-exam.vercel.app/examiner electron .",
+    "start:prod": "cross-env APP_URL=https://samadhan-exam.vercel.app/examiner electron .",
+    "build": "electron-builder --dir",
+    "dist": "electron-builder --win"
+  },
+  "dependencies": {
+    "axios": "^1.6.8"
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0",
+    "electron": "^29.1.5",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.samadhan.securemarking",
+    "productName": "SAMADHAN Secure Marking Browser",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "ui.js",
+      "index.html",
+      "config.json",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "${productName} Setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "${productName} Portable.${ext}"
+    }
+  }
+}

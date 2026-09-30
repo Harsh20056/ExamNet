@@ -1,6 +1,11 @@
 import { auth } from '../config/firebase';
 import { mockSheets, mockAlerts, mockExam, mockExaminers } from '../mock/data';
-import type { Sheet, Alert } from '../types';
+import type { 
+  Sheet, 
+  Alert, 
+  AuditEntry, 
+  ExaminerProfile 
+} from '../types';
 
 export class ApiError extends Error {
   public status: number;
@@ -14,8 +19,8 @@ export class ApiError extends Error {
   }
 }
 
-const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000').replace(/\/$/, '');
-export const USE_MOCK: boolean = import.meta.env.VITE_USE_MOCK === 'true' || import.meta.env.VITE_USE_MOCK === undefined;
+import { BACKEND_URL, USE_MOCK } from '../config/env';
+export { USE_MOCK };
 
 /**
  * Retrieves the current Firebase ID Token if user is logged in
@@ -36,19 +41,44 @@ export interface RequestOptions extends RequestInit {
   requireAuth?: boolean;
 }
 
+// Server waking listener callbacks for Render cold starts
+type WakingListener = (isWaking: boolean) => void;
+const wakingListeners = new Set<WakingListener>();
+let activeWakingCount = 0;
+
+function notifyWaking(isWaking: boolean) {
+  wakingListeners.forEach(listener => {
+    try {
+      listener(isWaking);
+    } catch {
+      // ignore
+    }
+  });
+}
+
+export function subscribeServerWaking(listener: WakingListener): () => void {
+  wakingListeners.add(listener);
+  listener(activeWakingCount > 0);
+  return () => {
+    wakingListeners.delete(listener);
+  };
+}
+
 /**
  * Universal fetch wrapper that:
  * 1. Reads VITE_BACKEND_URL
  * 2. Adds Authorization: Bearer <Firebase ID token>
- * 3. Throws typed ApiError instances
- * 4. Respects VITE_USE_MOCK fallback
+ * 3. Handles Render cold starts: retries failed network requests up to 3 times with backoff
+ * 4. Displays server waking banner if a request takes longer than 4 seconds
+ * 5. Unwraps backend standard envelope { success: true, data: ... }
+ * 6. Throws typed ApiError instances
+ * 7. Falls back to mock data ONLY when VITE_USE_MOCK=true
  */
 export async function apiFetch<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
   const { requireAuth = true, headers = {}, ...restOptions } = options;
-
   const url = `${BACKEND_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 
-  // If USE_MOCK is explicitly forced, route to mock directly
+  // If USE_MOCK is explicitly true, route to mock directly
   if (USE_MOCK) {
     const mockRes = getMockFallback<T>(endpoint, restOptions.method);
     if (mockRes !== undefined) {
@@ -68,44 +98,102 @@ export async function apiFetch<T>(endpoint: string, options: RequestOptions = {}
     }
   }
 
-  try {
-    const response = await fetch(url, {
-      ...restOptions,
-      headers: reqHeaders,
-    });
+  // Cold start detection timer (triggers after 4 seconds of waiting)
+  let wakeTimer: any = null;
+  let isTimerTriggered = false;
 
-    if (!response.ok) {
-      let errorBody: any;
-      try {
-        errorBody = await response.json();
-      } catch {
-        errorBody = await response.text();
+  const startWakeTimer = () => {
+    if (!isTimerTriggered) {
+      wakeTimer = setTimeout(() => {
+        isTimerTriggered = true;
+        activeWakingCount++;
+        notifyWaking(true);
+      }, 4000);
+    }
+  };
+
+  const clearWakeTimer = () => {
+    if (wakeTimer) {
+      clearTimeout(wakeTimer);
+      wakeTimer = null;
+    }
+    if (isTimerTriggered) {
+      activeWakingCount = Math.max(0, activeWakingCount - 1);
+      if (activeWakingCount === 0) {
+        notifyWaking(false);
       }
-      throw new ApiError(
-        typeof errorBody === 'object' && errorBody?.message ? errorBody.message : `API request failed with status ${response.status}`,
-        response.status,
-        errorBody
-      );
+      isTimerTriggered = false;
+    }
+  };
+
+  const maxRetries = 3;
+  let lastError: any = null;
+
+  startWakeTimer();
+
+  try {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await fetch(url, {
+          ...restOptions,
+          headers: reqHeaders,
+        });
+
+        if (!response.ok) {
+          let errorBody: any;
+          try {
+            errorBody = await response.json();
+          } catch {
+            errorBody = await response.text();
+          }
+          throw new ApiError(
+            typeof errorBody === 'object' && errorBody?.message ? errorBody.message : `API request failed with status ${response.status}`,
+            response.status,
+            errorBody
+          );
+        }
+
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const json = await response.json();
+          // Unwrap standard backend response envelope { success: true, data: ... }
+          if (json && typeof json === 'object' && 'data' in json && json.success === true) {
+            return json.data as T;
+          }
+          return json as T;
+        }
+        return (await response.text()) as unknown as T;
+      } catch (err: any) {
+        // If ApiError with 4xx status (e.g. 400, 401, 403, 404), do not retry
+        if (err instanceof ApiError && err.status >= 400 && err.status < 500) {
+          throw err;
+        }
+
+        lastError = err;
+
+        // If we haven't reached max retries, wait with backoff (1s, 2s, 4s)
+        if (attempt < maxRetries) {
+          const backoffMs = Math.pow(2, attempt - 1) * 1000;
+          await new Promise((resolve) => setTimeout(resolve, backoffMs));
+        }
+      }
     }
 
-    const contentType = response.headers.get('content-type');
-    if (contentType && contentType.includes('application/json')) {
-      return await response.json();
-    }
-    return (await response.text()) as unknown as T;
-  } catch (error: any) {
-    if (error instanceof ApiError) {
-      throw error;
+    if (lastError instanceof ApiError) {
+      throw lastError;
     }
 
-    // Backend network failure / unreachable: fallback to mock data
-    console.warn(`[API] Network failure calling ${endpoint}. Falling back to mock dataset:`, error.message);
-    const fallback = getMockFallback<T>(endpoint, restOptions.method);
-    if (fallback !== undefined) {
-      return fallback;
+    // Network failure after all retries: fallback to mock ONLY if USE_MOCK=true
+    if (USE_MOCK) {
+      const fallback = getMockFallback<T>(endpoint, restOptions.method);
+      if (fallback !== undefined) {
+        return fallback;
+      }
     }
 
-    throw new ApiError(error?.message || 'Network unreachable', 0, null);
+    throw new ApiError(lastError?.message || 'Server unreachable after retries', 0, null);
+  } finally {
+    clearWakeTimer();
   }
 }
 
@@ -154,10 +242,44 @@ function getMockFallback<T>(endpoint: string, method = 'GET'): T | undefined {
   return undefined;
 }
 
-// Typed API helper services
+// -------------------------------------------------------------
+// Typed API Services for all system domains
+// -------------------------------------------------------------
+
 export const SheetsApi = {
-  getAll: () => apiFetch<Sheet[]>('/api/sheets'),
+  // Controller / Admin list
+  getAll: (params?: { status?: string; examId?: string; assignedTo?: string }) => {
+    const qs = params ? new URLSearchParams(params as any).toString() : '';
+    return apiFetch<Sheet[]>(`/api/sheets${qs ? `?${qs}` : ''}`);
+  },
+  // Assigned to logged-in examiner
+  getMine: () => apiFetch<Sheet[]>('/api/sheets/mine'),
+  // Get sheet details with exam & marks
   getById: (sheetId: string) => apiFetch<Sheet>(`/api/sheets/${sheetId}`),
+  // Start marking
+  startMarking: (sheetId: string) =>
+    apiFetch<{ success: boolean; sheetId: string }>(`/api/sheets/${sheetId}/start`, {
+      method: 'POST',
+    }),
+  // Save question marks
+  saveMarks: (sheetId: string, payload: {
+    marks: Array<{
+      qNo: number;
+      marks: number;
+      comment?: string;
+      timeSpentSec?: number;
+    }>;
+  }) =>
+    apiFetch<Sheet>(`/api/sheets/${sheetId}/marks`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  // Submit evaluation
+  submit: (sheetId: string) =>
+    apiFetch<Sheet>(`/api/sheets/${sheetId}/submit`, {
+      method: 'POST',
+    }),
+  // Update score
   updateScore: (sheetId: string, payload: any) =>
     apiFetch<Sheet>(`/api/sheets/${sheetId}/score`, {
       method: 'PUT',
@@ -166,12 +288,98 @@ export const SheetsApi = {
 };
 
 export const AlertsApi = {
-  getAll: () => apiFetch<Alert[]>('/api/alerts'),
+  getAll: (filters?: { type?: string; severity?: string; status?: string; sheetId?: string }) => {
+    const qs = filters ? new URLSearchParams(filters as any).toString() : '';
+    return apiFetch<Alert[]>(`/api/alerts${qs ? `?${qs}` : ''}`);
+  },
+  // Post violation from secure browser (window.secure)
+  postViolation: (payload: {
+    sheetId: string;
+    type: 'WINDOW_BLUR' | 'SUSPICIOUS_PATTERN';
+    message: string;
+    metadata?: Record<string, any>;
+  }) =>
+    apiFetch<{ id: string; success: boolean }>('/api/alerts/violation', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  // Resolve alert
   resolve: (alertId: string, note: string) =>
     apiFetch<{ success: boolean }>(`/api/alerts/${alertId}/resolve`, {
       method: 'POST',
       body: JSON.stringify({ note }),
     }),
+};
+
+export const AIApi = {
+  evaluate: (payload: { sheetId: string; qNo: number }) =>
+    apiFetch<{
+      callId: string;
+      suggestedMarks: number;
+      confidence: number;
+      transcription: string;
+      matched: string[];
+      missed: string[];
+      reason: string;
+      source?: string;
+    }>('/api/ai/evaluate', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  decision: (payload: {
+    aiCallId: string;
+    decision: 'accepted' | 'overridden';
+    overrideMarks?: number;
+    note: string;
+  }) =>
+    apiFetch<{ success: boolean; aiCallId: string }>('/api/ai/decision', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+};
+
+export const ModerationApi = {
+  getQueue: () => apiFetch<Array<{
+    sheet: Sheet;
+    alerts: Alert[];
+    exam: any;
+    marks: any[];
+  }>>('/api/moderation/queue'),
+  takeAction: (sheetId: string, payload: {
+    action: 'approve' | 'adjust' | 'sendback';
+    reason: string;
+    adjustedMarks?: Array<{
+      qNo: number;
+      marks: number;
+      comment?: string;
+    }>;
+  }) =>
+    apiFetch<{ success: boolean; sheetId: string; action: string }>(`/api/moderation/${sheetId}/action`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+};
+
+export const AnalyticsApi = {
+  getMyStats: () => apiFetch<any>('/api/analytics/me'),
+  getAllExaminers: () => apiFetch<ExaminerProfile[]>('/api/analytics/examiners'),
+  getExamStats: (examId: string) => apiFetch<any>(`/api/analytics/exam/${examId}`),
+};
+
+export const AuditApi = {
+  search: (filters?: {
+    actor?: string;
+    action?: string;
+    sheetId?: string;
+    startDate?: string;
+    endDate?: string;
+    limit?: number;
+  }) => {
+    const qs = filters ? new URLSearchParams(filters as any).toString() : '';
+    return apiFetch<{ entries: AuditEntry[]; count: number }>(`/api/audit${qs ? `?${qs}` : ''}`);
+  },
+  verify: () => apiFetch<{ valid: boolean; totalEntries: number; brokenAt?: number }>('/api/audit/verify'),
+  getStatistics: () => apiFetch<any>('/api/audit/statistics'),
 };
 
 export const StatsApi = {

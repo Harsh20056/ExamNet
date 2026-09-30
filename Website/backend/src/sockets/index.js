@@ -85,13 +85,19 @@ function joinRoleRooms(socket, user) {
  */
 function initializeSocket(server, corsOptions) {
   const io = new Server(server, {
-    cors: corsOptions
+    cors: corsOptions,
+    transports: ['websocket', 'polling']
   });
   
-  // Authentication middleware
+  // Authentication middleware: verify ID token in handshake
   io.use(async (socket, next) => {
     try {
-      const token = socket.handshake.auth.token;
+      // Support token in handshake.auth, handshake.headers, or handshake.query
+      const token = socket.handshake.auth?.token ||
+        (socket.handshake.headers?.authorization && socket.handshake.headers.authorization.startsWith('Bearer ')
+          ? socket.handshake.headers.authorization.split(' ')[1]
+          : null) ||
+        socket.handshake.query?.token;
       
       if (!token) {
         return next(new Error('Authentication token required'));
@@ -166,8 +172,15 @@ function emitSheetUpdated(io, data) {
     ...data,
     timestamp: new Date().toISOString()
   });
+
+  if (data.assignedTo) {
+    io.to(ROOMS.examinerRoom(data.assignedTo)).emit('sheet_updated', {
+      ...data,
+      timestamp: new Date().toISOString()
+    });
+  }
   
-  console.log('[Socket] Emitted sheet_updated to controller and moderator');
+  console.log('[Socket] Emitted sheet_updated to controller, moderator, and assigned examiner');
 }
 
 /**
@@ -262,6 +275,12 @@ class DashboardTicker {
       
       // Gather dashboard statistics
       const stats = {
+        total: 0,
+        pending: 0,
+        inProgress: 0,
+        evaluated: 0,
+        flagged: 0,
+        final: 0,
         sheetsUploaded: 0,
         sheetsInProgress: 0,
         sheetsEvaluated: 0,
@@ -272,20 +291,28 @@ class DashboardTicker {
       
       // Count sheets by status
       const sheetsSnapshot = await db.collection(Collections.SHEETS).get();
+      stats.total = sheetsSnapshot.size;
       sheetsSnapshot.forEach(doc => {
         const sheet = doc.data();
         switch (sheet.status) {
           case 'uploaded':
             stats.sheetsUploaded++;
+            stats.pending++;
             break;
           case 'in_progress':
             stats.sheetsInProgress++;
+            stats.inProgress++;
             break;
           case 'evaluated':
             stats.sheetsEvaluated++;
+            stats.evaluated++;
             break;
           case 'flagged':
             stats.sheetsFlagged++;
+            stats.flagged++;
+            break;
+          case 'final':
+            stats.final++;
             break;
         }
       });

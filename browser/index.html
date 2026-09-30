@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SAMADHAN Secure Marking Browser</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #0f172a;
+      overflow: hidden;
+    }
+    #toolbar {
+      display: flex;
+      align-items: center;
+      padding: 8px 14px;
+      background-color: #1e293b;
+      color: #f8fafc;
+      border-bottom: 1px solid #334155;
+      user-select: none;
+      transition: background-color 0.3s ease, border-color 0.3s ease;
+      z-index: 100;
+    }
+    /* Toolbar is red with label "Secure marking mode" while active */
+    #toolbar.secure-active {
+      background-color: #dc2626 !important;
+      border-bottom: 1px solid #b91c1c !important;
+      color: #ffffff !important;
+    }
+    .brand-title {
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .secure-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+    .status-pulse {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: #22c55e;
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    #toolbar.secure-active .status-pulse {
+      background-color: #ffffff;
+      animation: flash 1s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    @keyframes flash {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.3; transform: scale(1.2); }
+    }
+    .nav-btn {
+      background: transparent;
+      border: none;
+      border-radius: 6px;
+      width: 30px;
+      height: 30px;
+      margin-right: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #94a3b8;
+      transition: background-color 0.2s, color 0.2s;
+    }
+    #toolbar.secure-active .nav-btn {
+      color: #fee2e2;
+    }
+    .nav-btn:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+    }
+    .nav-btn svg {
+      width: 16px;
+      height: 16px;
+      fill: currentColor;
+    }
+    #urlbar-container {
+      flex-grow: 1;
+      display: flex;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 8px;
+      padding: 0 12px;
+      height: 30px;
+      margin: 0 12px;
+      border: 1px solid #334155;
+    }
+    #toolbar.secure-active #urlbar-container {
+      background: rgba(0, 0, 0, 0.25);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+    #urlbar {
+      flex-grow: 1;
+      border: none;
+      outline: none;
+      font-size: 12px;
+      font-family: monospace;
+      color: #e2e8f0;
+      background: transparent;
+    }
+    #toolbar.secure-active #urlbar {
+      color: #ffffff;
+    }
+    .lock-icon {
+      width: 14px;
+      height: 14px;
+      fill: #38bdf8;
+      margin-right: 8px;
+    }
+    #toolbar.secure-active .lock-icon {
+      fill: #ffffff;
+    }
+    #toggle-mode-btn {
+      border: none;
+      border-radius: 6px;
+      padding: 6px 14px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      transition: all 0.2s ease;
+      background-color: #3b82f6;
+      color: white;
+    }
+    #toggle-mode-btn:hover {
+      opacity: 0.9;
+    }
+    #toolbar.secure-active #toggle-mode-btn {
+      background-color: #ffffff;
+      color: #b91c1c;
+    }
+    #webview-container {
+      flex-grow: 1;
+      display: flex;
+      background: #0f172a;
+      position: relative;
+    }
+    webview {
+      flex-grow: 1;
+      border: none;
+      width: 100%;
+      height: 100%;
+    }
+    #violation-banner {
+      display: none;
+      position: absolute;
+      top: 10px;
+      right: 14px;
+      background: #ef4444;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+      animation: slideIn 0.3s ease;
+    }
+    @keyframes slideIn {
+      from { transform: translateY(-20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    /* Offline fallback view (Requirement 1) */
+    #offline-view {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 30%, #1e293b 0%, #0f172a 100%);
+      color: #f8fafc;
+      z-index: 50;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      box-sizing: border-box;
+      text-align: center;
+    }
+    .offline-card {
+      max-width: 520px;
+      width: 100%;
+      background: rgba(30, 41, 59, 0.85);
+      border: 1px solid #334155;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(12px);
+      border-radius: 16px;
+      padding: 36px 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .offline-icon-box {
+      width: 64px;
+      height: 64px;
+      border-radius: 16px;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      color: #f87171;
+    }
+    .offline-title {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin: 0 0 8px 0;
+      color: #ffffff;
+    }
+    .offline-description {
+      font-size: 13px;
+      color: #94a3b8;
+      line-height: 1.5;
+      margin: 0 0 20px 0;
+    }
+    .offline-details-box {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-family: monospace;
+      font-size: 11px;
+      color: #cbd5e1;
+      text-align: left;
+      margin-bottom: 24px;
+      box-sizing: border-box;
+      word-break: break-all;
+    }
+    .offline-details-label {
+      color: #64748b;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+    }
+    .offline-actions {
+      display: flex;
+      gap: 12px;
+      width: 100%;
+    }
+    .btn-primary {
+      flex: 1;
+      background: #3b82f6;
+      color: #ffffff;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background-color 0.2s;
+    }
+    .btn-primary:hover {
+      background: #2563eb;
+    }
+    .btn-secondary {
+      flex: 1;
+      background: #334155;
+      color: #e2e8f0;
+      border: 1px solid #475569;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s, color 0.2s;
+    }
+    .btn-secondary:hover {
+      background: #475569;
+      color: #ffffff;
+    }
+    .offline-tip {
+      margin-top: 18px;
+      font-size: 11px;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+  <div id="toolbar">
+    <div class="brand-title">
+      <span id="brand-name">SAMADHAN</span>
+      <div id="status-badge" class="secure-badge">
+        <span class="status-pulse"></span>
+        <span id="status-label">Standby Mode</span>
+      </div>
+    </div>
+
+    <button class="nav-btn" id="reload-btn" title="Reload">
+      <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+    </button>
+
+    <div id="urlbar-container">
+      <svg class="lock-icon" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+      <input type="text" id="urlbar" readonly />
+    </div>
+
+    <button id="toggle-mode-btn">Toggle Secure Mode</button>
+  </div>
+
+  <div id="webview-container">
+    <div id="violation-banner"></div>
+
+    <!-- Clear Offline Screen (Requirement 1) -->
+    <div id="offline-view">
+      <div class="offline-card">
+        <div class="offline-icon-box">
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="1" y1="1" x2="23" y2="23"></line>
+            <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
+            <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
+            <path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path>
+            <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path>
+            <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+            <line x1="12" y1="20" x2="12.01" y2="20"></line>
+          </svg>
+        </div>
+        <h2 class="offline-title">Examination Portal Offline</h2>
+        <p class="offline-description">
+          The secure marking interface could not be reached. The remote server may be waking up or your network connection is interrupted.
+        </p>
+
+        <div class="offline-details-box">
+          <div class="offline-details-label">Attempted Destination</div>
+          <div id="offline-target-url" style="color: #60a5fa; margin-bottom: 6px;">https://samadhan-exam.vercel.app/examiner</div>
+          <div class="offline-details-label">Error Code / Diagnostics</div>
+          <div id="offline-error-info" style="color: #f87171;">ERR_CONNECTION_REFUSED</div>
+        </div>
+
+        <div class="offline-actions">
+          <button id="offline-retry-btn" class="btn-primary">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+            </svg>
+            Retry Connection
+          </button>
+          <button id="offline-local-btn" class="btn-secondary">
+            Switch to Local (5173)
+          </button>
+        </div>
+
+        <div class="offline-tip">
+          Render free tier instances sleep after inactivity and wake up within 30-50 seconds.
+        </div>
+      </div>
+    </div>
+
+    <!-- Webview with preload and camera permission capability -->
+    <webview id="webview" preload="./preload.js" allowpopups allowfullscreen></webview>
+  </div>
+
+  <script src="./ui.js"></script>
+</body>
+</html>

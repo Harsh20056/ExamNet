@@ -10,6 +10,7 @@ import {
 import { mockSheets, mockExam, mockAlerts } from '../../mock/data';
 import { SheetViewer } from '../../components/marking/SheetViewer';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
+import { ModerationApi } from '../../services/api';
 import toast from 'react-hot-toast';
 
 interface ModerationDecisionRecord {
@@ -122,7 +123,7 @@ export default function ReviewSheet() {
       timestamp: new Date().toISOString(),
     };
 
-    // Save decision to localStorage
+    // Save decision to localStorage and backend
     try {
       const existingDecisions: ModerationDecisionRecord[] = JSON.parse(
         localStorage.getItem('moderation_decisions') || '[]'
@@ -138,6 +139,24 @@ export default function ReviewSheet() {
         resolvedSheets.push(sheet.id);
         localStorage.setItem('moderated_resolved_sheets', JSON.stringify(resolvedSheets));
       }
+
+      // Convert adjustedMarks to array format expected by backend
+      const formattedAdjustedMarks = pendingAction === 'adjust' && adjustedMarks
+        ? Object.entries(adjustedMarks).map(([qKey, marks]) => ({
+            qNo: Number(qKey.replace(/\D/g, '') || 1),
+            marks: Number(marks),
+          }))
+        : undefined;
+
+      const backendAction = pendingAction === 'send_back' ? 'sendback' : pendingAction;
+
+      ModerationApi.takeAction(sheet.id, {
+        action: backendAction as 'approve' | 'adjust' | 'sendback',
+        reason: moderatorReason.trim(),
+        adjustedMarks: formattedAdjustedMarks,
+      }).catch((err) => {
+        console.warn('[ReviewSheet] Backend moderation call fallback:', err?.message || err);
+      });
     } catch (err) {
       console.error('Failed to persist moderation decision:', err);
     }

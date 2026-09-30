@@ -13,6 +13,7 @@ interface SubmitBarProps {
   onSaveDraft: () => void;
   onSubmit: () => void;
   className?: string;
+  isSecureMode?: boolean;
 }
 
 export const SubmitBar: React.FC<SubmitBarProps> = ({
@@ -26,6 +27,7 @@ export const SubmitBar: React.FC<SubmitBarProps> = ({
   onSaveDraft,
   onSubmit,
   className = '',
+  isSecureMode = false,
 }) => {
   return (
     <header className={`bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-3 shadow-sm flex flex-wrap items-center justify-between gap-4 select-none ${className}`}>
@@ -36,10 +38,17 @@ export const SubmitBar: React.FC<SubmitBarProps> = ({
             <span className="font-mono text-sm font-extrabold text-slate-900 dark:text-white">
               {sheetId}
             </span>
-            <div className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800">
-              <ShieldCheck size={12} />
-              <span>Secure Mode</span>
-            </div>
+            {isSecureMode ? (
+              <div className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-300 border border-red-300 dark:border-red-800 animate-pulse">
+                <ShieldCheck size={12} className="text-red-600 dark:text-red-400" />
+                <span>Secure mode ON</span>
+              </div>
+            ) : (
+              <div className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800">
+                <ShieldCheck size={12} />
+                <span>Standard Mode</span>
+              </div>
+            )}
           </div>
           <span className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-xs">
             {subject}

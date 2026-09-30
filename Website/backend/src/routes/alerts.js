@@ -162,10 +162,6 @@ router.post('/violation',
     
     const docRef = await db.collection('alerts').add(alert);
     
-    // Get sheet to find assigned examiner
-    const sheetDoc = await db.collection('sheets').doc(sheetId).get();
-    const sheet = sheetDoc.data();
-    
     // Emit anomaly alert
     emitAnomalyAlert(req.io, sheet.assignedTo, {
       alertId: docRef.id,

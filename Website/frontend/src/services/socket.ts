@@ -5,7 +5,7 @@ import type { Role } from '../types';
 let socketInstance: Socket | null = null;
 let currentJoinedRole: Role = null;
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+import { BACKEND_URL } from '../config/env';
 
 /**
  * Initializes and connects socket singleton once after login.
@@ -40,10 +40,8 @@ export async function initializeSocket(role: Role): Promise<Socket | null> {
     currentJoinedRole = role;
 
     socketInstance.on('connect', () => {
-      console.log(`[SOCKET] Connected to telemetry daemon (ID: ${socketInstance?.id})`);
       if (role) {
         socketInstance?.emit('join_room', { role, timestamp: new Date().toISOString() });
-        console.log(`[SOCKET] Joined room: role_${role}`);
       }
     });
 
@@ -51,14 +49,29 @@ export async function initializeSocket(role: Role): Promise<Socket | null> {
       console.warn('[SOCKET] Realtime socket connection failed (operating in offline fallback mode):', err.message);
     });
 
-    socketInstance.on('disconnect', (reason) => {
-      console.log('[SOCKET] Disconnected:', reason);
+    socketInstance.on('disconnect', () => {
+      // Disconnected
     });
 
     return socketInstance;
   } catch (err) {
     console.warn('[SOCKET] Could not initialize socket instance:', err);
     return null;
+  }
+}
+
+/**
+ * Updates the socket authentication token and reconnects if active
+ */
+export async function updateSocketToken(newToken: string): Promise<void> {
+  if (socketInstance) {
+    socketInstance.auth = {
+      ...socketInstance.auth,
+      token: newToken,
+    };
+    if (socketInstance.connected) {
+      socketInstance.disconnect().connect();
+    }
   }
 }
 
@@ -77,6 +90,5 @@ export function disconnectSocket(): void {
     socketInstance.disconnect();
     socketInstance = null;
     currentJoinedRole = null;
-    console.log('[SOCKET] Socket instance disconnected and destroyed.');
   }
 }

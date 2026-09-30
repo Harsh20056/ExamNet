@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check if caller is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if caller owns the user profile
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // 1. Users collection:
+    // Signed-in user can ONLY read their own profile document
+    // Direct writes are completely blocked (managed via backend Admin SDK)
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if false;
+    }
+
+    // 2. Identity Map:
+    // High-security pseudonymization mapping. Strictly unreadable and unwritable by any client.
+    match /identityMap/{docId} {
+      allow read, write: if false;
+    }
+
+    // 3. Audit Log:
+    // Immutable cryptographic audit trail. Strictly unreadable and unwritable directly by clients.
+    match /audit/{docId} {
+      allow read, write: if false;
+    }
+
+    // 4. All other collections (sheets, exams, marks, alerts, aiCalls, identityVerifications, etc.):
+    // Direct client reads and writes are denied. All operations route through the backend using Firebase Admin SDK.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

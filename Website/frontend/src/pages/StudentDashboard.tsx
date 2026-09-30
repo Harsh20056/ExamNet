@@ -7,6 +7,7 @@ import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import IntentStatusBadge from '../components/IntentStatusBadge';
+import { BACKEND_URL } from '../config/env';
 
 declare global {
   interface Window {
@@ -73,7 +74,6 @@ export default function StudentDashboard() {
   const socketRef = useRef<any>(null);
   const [studentRecord, setStudentRecord] = useState<any>(null);
 
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || (window.location.hostname === 'localhost' ? 'http://127.0.0.1:5000' : `https://zup-exam-backend-42.loca.lt`);
 
   const fetchStudentRecord = useCallback(async () => {
     try {
@@ -241,7 +241,6 @@ export default function StudentDashboard() {
     // Notify invigilator via backend API
     const email = localStorage.getItem('auth_email') || '';
     const name = email ? email.split('@')[0] : 'Unknown Student';
-    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || (window.location.hostname === 'localhost' ? 'http://127.0.0.1:5000' : `https://zup-exam-backend-42.loca.lt`);
     
     fetch(`${BACKEND_URL}/api/cheat`, {
       method: 'POST',

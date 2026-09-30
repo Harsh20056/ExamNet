@@ -7,9 +7,11 @@ const router = express.Router();
  * Returns server status and timestamp
  */
 router.get('/', (req, res) => {
+  const now = new Date().toISOString();
   res.json({
     status: 'ok',
-    timestamp: new Date().toISOString(),
+    time: now,
+    timestamp: now,
     service: 'SAMADHAN X Backend',
     version: process.env.npm_package_version || '1.0.0',
     environment: process.env.NODE_ENV || 'development'

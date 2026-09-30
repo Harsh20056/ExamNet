@@ -35,19 +35,26 @@ export function useLiveStats() {
   useEffect(() => {
     fetchStats();
 
-    // Listen for socket telemetry broadcast
     const socket = getSocket();
     if (socket) {
-      const handleTelemetry = (incoming: Partial<LiveStatsData>) => {
-        setStats((prev) => ({ ...prev, ...incoming }));
+      const handleTelemetry = (incoming: any) => {
+        setStats((prev) => ({
+          total: incoming.total ?? prev.total,
+          pending: incoming.pending ?? incoming.sheetsUploaded ?? prev.pending,
+          inProgress: incoming.inProgress ?? incoming.sheetsInProgress ?? prev.inProgress,
+          flagged: incoming.flagged ?? incoming.sheetsFlagged ?? prev.flagged,
+          final: incoming.final ?? incoming.sheetsEvaluated ?? prev.final,
+        }));
       };
 
       socket.on('stats_update', handleTelemetry);
       socket.on('telemetry_tick', handleTelemetry);
+      socket.on('dashboard_tick', handleTelemetry);
 
       return () => {
         socket.off('stats_update', handleTelemetry);
         socket.off('telemetry_tick', handleTelemetry);
+        socket.off('dashboard_tick', handleTelemetry);
       };
     }
   }, [fetchStats]);

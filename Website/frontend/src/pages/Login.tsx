@@ -113,9 +113,12 @@ export default function Login() {
       console.error(err);
       if (err.code === 'auth/invalid-api-key') {
         setError('Firebase Error: Please add your actual Firebase Config in src/config/firebase.ts!');
-      } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found') {
+      } else if (err.code === 'auth/user-not-found') {
         toast.error('You have not signed up yet. Please sign up first!', { duration: 4000 });
         setIsLogin(false); // Switch to signup
+      } else if (err.code === 'auth/invalid-credential') {
+        toast.error('Invalid email or password. Please try again.', { duration: 4000 });
+        setError('Invalid credentials.');
       } else if (err.code === 'auth/email-already-in-use') {
         toast.error('This email is already registered. Please login.', { duration: 4000 });
         setIsLogin(true); // Switch to login
@@ -337,7 +340,7 @@ export default function Login() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={
                   loginType === 'examiner' 
-                    ? 'examiner@demo.com' 
+                    ? 'examiner1@demo.com' 
                     : loginType === 'controller' 
                     ? 'controller@demo.com' 
                     : 'moderator@demo.com'
@@ -451,8 +454,8 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => {
-                  setEmail('examiner@demo.com');
-                  setPassword('Password@123');
+                  setEmail('examiner1@demo.com');
+                  setPassword('Demo123!');
                   setLoginType('examiner');
                 }}
                 className="flex-1 py-1.5 px-2 text-xs font-medium bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors shadow-sm"
@@ -463,7 +466,7 @@ export default function Login() {
                 type="button"
                 onClick={() => {
                   setEmail('moderator@demo.com');
-                  setPassword('Password@123');
+                  setPassword('Demo123!');
                   setLoginType('moderator');
                 }}
                 className="flex-1 py-1.5 px-2 text-xs font-medium bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors shadow-sm"
@@ -474,7 +477,7 @@ export default function Login() {
                 type="button"
                 onClick={() => {
                   setEmail('controller@demo.com');
-                  setPassword('Password@123');
+                  setPassword('Demo123!');
                   setLoginType('controller');
                 }}
                 className="flex-1 py-1.5 px-2 text-xs font-medium bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors shadow-sm"

@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
   onAuthStateChanged,
+  onIdTokenChanged,
   signOut as firebaseSignOut,
   type User as FirebaseUser
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
-import { initializeSocket, disconnectSocket } from '../services/socket';
+import { initializeSocket, disconnectSocket, updateSocketToken } from '../services/socket';
 
 export type Role = 'examiner' | 'moderator' | 'controller' | null;
 
@@ -121,7 +122,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
-    return unsubscribe;
+    // Reconnect socket with fresh token whenever Firebase refreshes it
+    const unsubscribeToken = onIdTokenChanged(auth, async (currentUser) => {
+      if (currentUser) {
+        try {
+          const freshToken = await currentUser.getIdToken();
+          if (freshToken) {
+            localStorage.setItem('auth_token', freshToken);
+            await updateSocketToken(freshToken);
+          }
+        } catch (err) {
+          console.warn('Failed to refresh socket token:', err);
+        }
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      unsubscribeToken();
+    };
   }, []);
 
   // Initialize socket singleton and join role room whenever role changes
@@ -146,8 +165,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     sessionStorage.removeItem('identity_verified');
     try {
       await firebaseSignOut(auth);
-    } catch(e) {
-      console.log("Firebase signout error (or using mock):", e);
+    } catch {
+      // Signout error or mock session cleanup
     }
   };
 

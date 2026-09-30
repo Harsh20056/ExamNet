@@ -5,8 +5,8 @@
  */
 
 const ANOMALY_THRESHOLDS = {
-  // A5: Time spent anomaly detection
-  TIME_SPENT_MULTIPLIER: 0.25, // Flag if time < 25% of median
+  // A5: Time spent anomaly detection (fast marking ratio)
+  TIME_SPENT_MULTIPLIER: process.env.FAST_MARKING_RATIO ? parseFloat(process.env.FAST_MARKING_RATIO) : 0.25, // Flag if time < 25% of median
   
   // Minimum time to flag (seconds) - don't flag very quick marks as anomaly
   MIN_TIME_THRESHOLD: 30,

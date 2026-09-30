@@ -107,8 +107,7 @@ export const mockExam: Exam = {
   ],
 };
 
-const placeholderSvg = (page: number, label: string) => 
-  `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1100" viewBox="0 0 800 1100"><rect width="800" height="1100" fill="%23f8fafc" stroke="%23cbd5e1" stroke-width="2"/><line x1="80" y1="120" x2="720" y2="120" stroke="%2394a3b8" stroke-dasharray="4,4"/><text x="400" y="80" font-family="sans-serif" font-size="20" font-weight="bold" fill="%230f172a" text-anchor="middle">OFFICIAL ANSWER SCRIPT - PAGE ${page}</text><text x="400" y="160" font-family="monospace" font-size="14" fill="%23475569" text-anchor="middle">${label}</text><rect x="80" y="200" width="640" height="820" fill="%23ffffff" rx="8" stroke="%23e2e8f0"/><text x="120" y="280" font-family="sans-serif" font-size="15" fill="%23334155">[Digital Optical Scan: High Definition Handwriting Capture]</text><line x1="120" y1="340" x2="680" y2="340" stroke="%23e2e8f0"/><line x1="120" y1="400" x2="680" y2="400" stroke="%23e2e8f0"/><line x1="120" y1="460" x2="680" y2="460" stroke="%23e2e8f0"/><text x="120" y="520" font-family="serif" font-size="18" fill="%231e293b" font-style="italic">Candidate handwritten working lines and rubric response...</text><line x1="120" y1="580" x2="680" y2="580" stroke="%23e2e8f0"/><line x1="120" y1="640" x2="680" y2="640" stroke="%23e2e8f0"/><text x="400" y="1050" font-family="sans-serif" font-size="12" fill="%2394a3b8" text-anchor="middle">Confidential On-Screen Marking Script</text></svg>`;
+const placeholderSvg = (page: number, label: string) => `/samples/SX-0001-p${page}.png`;
 
 export const mockSheets: Sheet[] = [
   {

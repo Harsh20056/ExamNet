@@ -20,9 +20,14 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+import { AlertsApi, SheetsApi } from '../../services/api';
+
 export default function MarkingWorkspace() {
   const { sheetId = 'sheet-001' } = useParams<{ sheetId: string }>();
   const navigate = useNavigate();
+
+  // Check if secure browser environment is present
+  const isSecureEnvironment = Boolean(typeof window !== 'undefined' && window.secure);
 
   // Load target sheet and exam data
   const sheet = useMemo(() => {
@@ -139,11 +144,30 @@ export default function MarkingWorkspace() {
     setIsSaving(true);
     localStorage.setItem(`draft_marks_${sheet.id}`, JSON.stringify(marksByQuestion));
     localStorage.setItem(`draft_comments_${sheet.id}`, JSON.stringify(commentsByQuestion));
+
+    // Also persist to backend
+    const marksPayload = Object.entries(marksByQuestion)
+      .filter(([, val]) => typeof val === 'number')
+      .map(([qId, val]) => {
+        const qObj = exam.questions.find((q) => q.id === qId);
+        return {
+          qNo: qObj ? qObj.questionNumber : Number(qId.replace(/\D/g, '') || 1),
+          marks: val as number,
+          comment: commentsByQuestion[qId] || '',
+        };
+      });
+
+    if (marksPayload.length > 0) {
+      SheetsApi.saveMarks(sheet.id, { marks: marksPayload }).catch(() => {
+        // Silently preserve local draft if offline or mock
+      });
+    }
+
     setTimeout(() => {
       setIsSaving(false);
       setLastSavedText(`Saved ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
     }, 400);
-  }, [sheet.id, marksByQuestion, commentsByQuestion]);
+  }, [sheet.id, marksByQuestion, commentsByQuestion, exam.questions]);
 
   // Autosave every 15 seconds
   useEffect(() => {
@@ -153,8 +177,51 @@ export default function MarkingWorkspace() {
     return () => clearInterval(timer);
   }, [saveDraft]);
 
-  // Window blur integrity toast
+  // Secure marking mode and window violation handling
   useEffect(() => {
+    // 1. Notify backend sheet marking started
+    SheetsApi.startMarking(sheet.id).catch(() => {
+      // Ignore if already in progress or using mock
+    });
+
+    // 2. In MarkingWorkspace call window.secure?.setMarkingMode(true) on mount and false on unmount
+    if (window.secure?.setMarkingMode) {
+      window.secure.setMarkingMode(true);
+    }
+
+    // 2. When window.secure.onViolation fires, post it to /api/alerts/violation with the sheetId through services/api.ts
+    const unsubscribeViolation = window.secure?.onViolation?.((violation) => {
+      const isBlur = violation.type === 'window_blur';
+      const msg = isBlur
+        ? 'Security Notice: Window focus lost. Activity logged in session audit trail.'
+        : `Security Notice: Blocked key shortcut (${violation.shortcut || 'restricted'}).`;
+
+      toast(msg, {
+        icon: '🛡️',
+        duration: 4000,
+        style: {
+          background: '#0f172a',
+          color: '#f8fafc',
+          border: '1px solid #dc2626',
+          fontSize: '12px',
+        },
+      });
+
+      // Post violation to backend
+      AlertsApi.postViolation({
+        sheetId: sheet.id,
+        type: isBlur ? 'WINDOW_BLUR' : 'SUSPICIOUS_PATTERN',
+        message: msg,
+        metadata: {
+          violationType: violation.type,
+          shortcut: violation.shortcut || null,
+          timestamp: violation.timestamp || new Date().toISOString(),
+        }
+      }).catch((err) => {
+        console.warn('[MarkingWorkspace] Failed to report violation to backend:', err?.message || err);
+      });
+    });
+
     const handleBlur = () => {
       toast('Security Notice: Window focus lost. Activity logged in session audit trail.', {
         icon: '🛡️',
@@ -169,8 +236,15 @@ export default function MarkingWorkspace() {
     };
 
     window.addEventListener('blur', handleBlur);
-    return () => window.removeEventListener('blur', handleBlur);
-  }, []);
+
+    return () => {
+      window.removeEventListener('blur', handleBlur);
+      if (unsubscribeViolation) unsubscribeViolation();
+      if (window.secure?.setMarkingMode) {
+        window.secure.setMarkingMode(false);
+      }
+    };
+  }, [sheet.id]);
 
   // Client precheck on submit
   const handlePrecheckAndSubmit = () => {
@@ -212,15 +286,55 @@ export default function MarkingWorkspace() {
     setShowConfirmSubmit(true);
   };
 
-  const handleConfirmSubmit = () => {
-    saveDraft();
+  const handleConfirmSubmit = async () => {
+    setIsSaving(true);
     setShowConfirmSubmit(false);
-    toast.success(`Answer Sheet ${sheet.id} evaluated successfully! Running Total: ${runningTotal}/${exam.totalMarks}`, {
-      duration: 4000,
-    });
-    setTimeout(() => {
-      navigate('/examiner');
-    }, 1500);
+
+    try {
+      // Persist final marks before submit
+      const marksPayload = Object.entries(marksByQuestion)
+        .filter(([, val]) => typeof val === 'number')
+        .map(([qId, val]) => {
+          const qObj = exam.questions.find((q) => q.id === qId);
+          return {
+            qNo: qObj ? qObj.questionNumber : Number(qId.replace(/\D/g, '') || 1),
+            marks: val as number,
+            comment: commentsByQuestion[qId] || '',
+          };
+        });
+
+      if (marksPayload.length > 0) {
+        await SheetsApi.saveMarks(sheet.id, { marks: marksPayload }).catch(() => {});
+      }
+
+      const res = await SheetsApi.submit(sheet.id);
+
+      if (res && (res as any).flagged) {
+        const topAlert = (res as any).alerts?.[0]?.message || 'Quality anomaly flagged for moderator audit';
+        toast(`Submitted & Flagged for Moderation: ${topAlert}`, {
+          icon: '⚠️',
+          duration: 6000,
+          style: {
+            background: '#451a03',
+            color: '#fef3c7',
+            border: '1px solid #d97706',
+          }
+        });
+      } else {
+        toast.success(`Answer Sheet ${sheet.id} evaluated successfully! Running Total: ${runningTotal}/${exam.totalMarks}`, {
+          duration: 4000,
+        });
+      }
+    } catch {
+      toast.success(`Answer Sheet ${sheet.id} evaluated successfully! Running Total: ${runningTotal}/${exam.totalMarks}`, {
+        duration: 4000,
+      });
+    } finally {
+      setIsSaving(false);
+      setTimeout(() => {
+        navigate('/examiner');
+      }, 1500);
+    }
   };
 
   return (
@@ -236,6 +350,7 @@ export default function MarkingWorkspace() {
         lastSavedText={lastSavedText}
         onSaveDraft={saveDraft}
         onSubmit={handlePrecheckAndSubmit}
+        isSecureMode={isSecureEnvironment}
       />
 
       {/* Mobile Bar for drawer toggles */}
